@@ -1,0 +1,26 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "https?://localhost.*",
+      "reason": "Local development URLs"
+    },
+    {
+      "pattern": "https?://127\\.0\\.0\\.1.*",
+      "reason": "Local development URLs"
+    }
+  ],
+  "replacementPatterns": [
+    {
+      "pattern": "^/([^/].*)$",
+      "replacement": "https://github.com/TeacherEvan/Surgical-Pruning/blob/main/$1"
+    }
+  ],
+  "httpHeaders": [
+    {
+      "urls": ["https://github.com/*"],
+      "headers": {
+        "Accept": "text/html,application/xhtml+xml"
+      }
+    }
+  ]
+}

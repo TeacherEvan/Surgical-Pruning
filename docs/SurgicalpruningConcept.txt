@@ -1,0 +1,789 @@
+⚡️ ENHANCED PROMPT — SURGICAL PRUNING MULTI-AGENT WORKFLOW
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║  SURGICAL PRUNING — MULTI-AGENT ORCHESTRATION SPECIFICATION                 ║
+║  Version: 2.0  |  Pattern: Pipeline + Supervisor Hybrid                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 1. ARCHITECTURE OVERVIEW                                                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Pattern: Sequential pipeline with supervisor fan-out at decision points      │
+│                                                                              │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐     │
+│  │  PRUNE-     │──▶│  PRUNE-     │──▶│  PRUNING-   │──▶│  EXECUTION  │     │
+│  │  REVIEWER   │   │  RESEARCHER │   │  PLANNER    │   │  GUARDIANS  │     │
+│  └─────────────┘   └─────────────┘   └─────────────┘   └──────┬──────┘     │
+│        │                │                │                     │            │
+│        ▼                ▼                ▼                     ▼            │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │              SUPERVISOR: ORCHESTRATOR (You)                         │    │
+│  │  • Validates handoff artifacts at each gate                         │    │
+│  │  • Enforces safety policies (dry-run, confirm, rollback)           │    │
+│  │  • Coordinates parallel post-execution agents                      │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                    │                                        │
+│                    ┌───────────────┼───────────────┐                        │
+│                    ▼               ▼               ▼                        │
+│             ┌────────────┐  ┌────────────┐  ┌────────────┐                 │
+│             │ DEBRIEFER  │  │ CODEBASE   │  │ RESEARCHER │                 │
+│             │ (Summary)  │  │ AUDITOR    │  │ (Best      │                 │
+│             │            │  │ (Deep)     │  │  Practices)│                 │
+│             └────────────┘  └────────────┘  └────────────┘                 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 2. GLOBAL SAFETY POLICIES (NON-NEGOTIABLE)                                  │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ ⛔ NO DELETION WITHOUT:                                                      │
+│    • Explicit user confirmation via generated HTML interface                 │
+│    • Dry-run execution logged to `.prune/dry-run-<timestamp>.log`           │
+│    • Git stash/branch checkpoint created: `prune-checkpoint-<timestamp>`    │
+│    • Rollback script generated: `.prune/rollback-<timestamp>.sh`            │
+│                                                                              │
+│ ⛔ EXCLUSIONS (ALWAYS PROTECTED):                                            │
+│    • `.git/`, `.github/`, `.gitlab/`, `.husky/`                             │
+│    • `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `Cargo.lock`       │
+│    • `.env*`, `*.pem`, `*.key`, `*.cert`, `secrets/`, `.aws/`, `.ssh/`      │
+│    • `node_modules/`, `.venv/`, `venv/`, `dist/`, `build/`, `.next/`, `.vercel/`│
+│    • Any file matching `*config*`, `*setup*`, `*.config.*`, `docker*`       │
+│    • Files with `@generated` or `DO NOT EDIT` headers                        │
+│    • Entry points: `main.*`, `index.*`, `app.*`, `server.*`, `cli.*`        │
+│    • Test files: `*.test.*`, `*.spec.*`, `__tests__/`, `tests/`, `cypress/` │
+│                                                                              │
+│ ⛔ CONFIDENCE THRESHOLDS:                                                    │
+│    • Auto-prune only: confidence ≥ 95% (unused exports, dead deps)          │
+│    • Review required: confidence 70-94% (unreachable files, zombie code)    │
+│    • Manual only: confidence < 70% (dynamic imports, reflection, plugins)   │
+└──────────────────────────────────────────────────────────────────────────────┘
+📋 AGENT 1: PRUNE-REVIEWER — SYSTEM CARTOGRAPHER
+Role: Static analysis & dependency mapping
+Input: Target directory path (absolute) + user prompt
+Output: HANDOFF_REVIEWER.json → passed to Prune-Researcher
+## MANDATORY DELIVERABLES (write to .prune/handoff-reviewer.json)
+
+{
+  "metadata": {
+    "target_path": "/absolute/path/to/target",
+    "scan_timestamp": "ISO8601",
+    "scan_duration_ms": 1234,
+    "git_root": "/absolute/git/root",
+    "git_branch": "main",
+    "git_commit": "abc123def"
+  },
+  "tree_diagram": "ASCII/mermaid representation of full directory tree",
+  "file_inventory": [
+    {
+      "path": "relative/path/to/file.ts",
+      "size_bytes": 2048,
+      "lines": 87,
+      "language": "typescript",
+      "last_modified": "ISO8601",
+      "git_history": {
+        "first_commit": "ISO8601",
+        "last_commit": "ISO8601",
+        "commit_count": 12,
+        "authors": ["name <email>"]
+      },
+      "dependency_graph": {
+        "imports": ["internal:./utils", "external:lodash"],
+        "imported_by": ["internal:./index.ts"],
+        "entry_point_distance": 3,
+        "is_entry_point": false,
+        "is_test": false,
+        "is_config": false
+      },
+      "dead_code_signals": {
+        "unused_exports": ["helperFn"],
+        "unreachable": false,
+        "zero_references": true,
+        "confidence": 0.92
+      }
+    }
+  ],
+  "folder_summary": [
+    {
+      "path": "src/utils",
+      "file_count": 23,
+      "total_bytes": 456789,
+      "languages": {"typescript": 20, "json": 3},
+      "oldest_doc": "2023-01-15T10:00:00Z",
+      "newest_doc": "2025-11-20T14:30:00Z",
+      "dead_code_candidates": 7,
+      "protected_files": 2
+    }
+  ],
+  "effected_systems": [
+    {"name": "build", "impact": "bundle_size_reduction_est_kb": 145},
+    {"name": "ci", "impact": "time_saved_seconds_est": 12},
+    {"name": "cognitive_load", "impact": "files_removable": 18}
+  ],
+  "constraints": {
+    "exclusion_patterns_applied": ["**/*.test.ts", "**/node_modules/**", "..."],
+    "languages_detected": ["typescript", "json", "yaml"],
+    "frameworks_detected": ["next.js", "jest", "eslint"],
+    "package_managers": ["pnpm"],
+    "monorepo": false
+  }
+}
+Tools Required: search_files, terminal (git, find, wc, stat), read_file
+Execution: Single pass, no external calls
+📋 AGENT 2: PRUNE-RESEARCHER — PRACTICE INVESTIGATOR
+Role: Context-aware best practice research
+Input: HANDOFF_REVIEWER.json + user prompt
+Output: HANDOFF_RESEARCHER.json → passed to Pruning-Planner
+## MANDATORY DELIVERABLES (write to .prune/handoff-researcher.json)
+
+{
+  "user_prompt_analysis": {
+    "intent": "prune|cleanup|dead-code-removal|bundle-optimization",
+    "scope": "folder|file|pattern|monorepo",
+    "aggressiveness": "conservative|moderate|aggressive",
+    "constraints_from_user": ["preserve tests", "keep config", "..."]
+  },
+  "language_specific_practices": {
+    "typescript": {
+      "tools": [
+        {"name": "knip", "version": "latest", "confidence": 0.95, "config_example": "knip.json"},
+        {"name": "ts-prune", "version": "latest", "confidence": 0.70, "note": "legacy, limited"},
+        {"name": "repowise get_dead_code", "confidence": 0.98, "note": "graph-aware, paid tier"}
+      ],
+      "patterns": ["barrel file exports", "type-only imports", "conditional exports"],
+      "entry_point_heuristics": ["next.js pages", "vite entry", "jest config", "storybook"]
+    },
+    "python": {
+      "tools": [{"name": "vulture", "confidence": 0.85}, {"name": "pyflakes", "confidence": 0.75}],
+      "patterns": ["__init__.py side effects", "plugin entry points", "click/typer CLI commands"]
+    }
+  },
+  "general_practices": [
+    {"practice": "Start with one signal type (unused exports)", "source": "repowise blog", "priority": 1},
+    {"practice": "Sort by confidence, remove in small patches", "source": "repowise blog", "priority": 2},
+    {"practice": "Verify with production profiling before removing structural dead code", "source": "FlagShark", "priority": 3},
+    {"practice": "Check framework entry points before removing 'unreferenced' files", "source": "Knip docs", "priority": 1},
+    {"practice": "Add guardrails: dry-run → stash → confirm → commit", "source": "dcg pattern", "priority": 0}
+  ],
+  "tool_recommendations": [
+    {"tool": "knip", "install": "pnpm add -D knip", "run": "knip --reporter=json", "output_schema": "KnipReport"},
+    {"tool": "depcheck", "install": "npx depcheck", "run": "depcheck --json", "output_schema": "DepcheckReport"},
+    {"tool": "bundle-analyzer", "install": "@next/bundle-analyzer", "run": "ANALYZE=true pnpm build", "note": "visual bundle inspection"}
+  ],
+  "future_proofing": {
+    "ci_integration": "Add knip to CI pipeline with --fail-on-issues",
+    "precommit_hook": "husky + lint-staged for knip",
+    "dependency_budget": "Set bundle size budgets in webpack/next.config"
+  }
+}
+Tools Required: web_search (targeted queries per language/framework), read_file (local configs)
+Execution: Parallel searches per detected language
+📋 AGENT 3: PRUNING-PLANNER — INTERACTIVE HTML GENERATOR
+Role: Creates the surgical planning interface
+Input: HANDOFF_REVIEWER.json + HANDOFF_RESEARCHER.json
+Output: surgical-pruning-<mmdd>-<target-folder>.html (self-contained, no external deps)
+## HTML SPECIFICATION — SINGLE FILE, ZERO DEPENDENCIES
+
+### TECH STACK (EMBEDDED)
+- Mermaid.js (CDN fallback + localStorage cache)
+- D3.js v7 (minified, embedded for tree/circle diagrams)
+- Vanilla ES6 modules, no build step
+- CSS Custom Properties for theming
+- IntersectionObserver for scroll animations
+
+### VISUAL SPECIFICATION — "FUTURISTIC NATURE" THEME
+Color Palette (CSS Variables):
+--bg-deep: #0a0f0d // Deep forest night
+--bg-surface: #111814 // Bark texture
+--bg-elevated: #1a241f // Moss layer
+--fg-primary: #e8f5e9 // Morning dew
+--fg-muted: #8ecaa8 // Sage whisper
+--accent-growth: #4ade80 // New leaf
+--accent-decay: #f87171 // Autumn berry
+--accent-data: #60a5fa // Sky reflection
+--accent-warning: #fbbf24 // Amber sap
+--border-subtle: #2a3a30 // Root lines
+--glow-subtle: rgba(74,222,128,0.15)
+--glow-strong: rgba(74,222,128,0.35)
+Typography:
+--font-mono: 'JetBrains Mono', 'Fira Code', monospace
+--font-ui: 'IBM Plex Sans', system-ui, sans-serif
+--font-display: 'Space Grotesk', 'IBM Plex Sans', sans-serif
+Animations:
+--transition-fast: 120ms cubic-bezier(0.2, 0.8, 0.2, 1)
+--transition-smooth: 300ms cubic-bezier(0.16, 1, 0.3, 1)
+--transition-organic: 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94)
+
+### REQUIRED UI COMPONENTS
+
+#### 1. HEADER BAR
+- Title: "SURGICAL PRUNING — <target-folder> — <mm/dd/yyyy>"
+- Live stats pills: Files Scanned | Candidates | Est. Reclaimed (KB) | Est. CI Time Saved (s)
+- Theme toggle (Nature / Deep Space / High Contrast)
+
+#### 2. DIAGRAM TOGGLE PANEL (TOP-RIGHT, STICKY)
+Three tabs with smooth morph transition:
+- **TREE** — D3.js collapsible radial tree (root = target folder)
+- **MERMAID** — Mermaid flowchart LR (folder → file → dependency)
+- **CIRCLE** — D3.js pack layout (size = bytes, color = confidence)
+
+**RED HIGHLIGHT RULE:** Any node with `selected_for_pruning === true` gets:
+  - Stroke: `var(--accent-decay)`, stroke-width: 2.5px
+  - Filter: `drop-shadow(0 0 8px var(--accent-decay))`
+  - Pulse animation: 2s infinite (subtle)
+
+#### 3. FILE/FOLDER CHECKLIST (MAIN PANEL, VIRTUALIZED
+┌─────────────────────────────────────────────────────────────────┐
+│ ☑️ src/utils/legacy-helpers.ts 2.1 KB 95% 🟢 unused │
+│ ☐ src/components/DeprecatedCard.tsx 4.7 KB 87% 🟡 review │
+│ ☐ src/hooks/useOldAnalytics.ts 1.3 KB 72% 🟡 review │
+│ ☑️ scripts/old-migration.js 890 B 99% 🟢 dead dep │
+│ ... (virtualized, 1000+ items smooth) │
+└─────────────────────────────────────────────────────────────────┘
+Columns: [☑] Path | Size | Confidence | Signal Badge | [🔍] Expand (shows imports/imported-by)
+
+**Interactions:**
+- Checkbox tick → instant diagram highlight update (requestAnimationFrame)
+- Shift-click → range select
+- Keyboard: Space=toggle, Enter=expand, /=filter, Escape=clear filter
+- Filter chips: 🟢 Auto-prune (≥95%) | 🟡 Review (70-94%) | 🔴 Manual (<70%) | 🛡️ Protected
+
+#### 4. PERFORMANCE RECLAMATION GRAPHIC (BOTTOM-LEFT, ANIMATED)
+- **SVG Path Morphing** — Organic blob representing "codebase mass"
+- **Metrics Displayed Live:**
+  - Bundle size reduction (KB/MB) — morphs blob width
+  - File count reduction — morphs blob particle count
+  - CI time estimate (seconds) — morphs blob rotation speed
+  - Cognitive load index (0-100) — morphs blob complexity (vertex count)
+- **Animation:** FLIP technique, 300ms spring physics per tick change
+
+#### 5. PRUNE BUTTON (BOTTOM-CENTER, PROMINENT)
+┌────────────────────────────────────────────────────────────┐
+│ [ PRUNE SELECTED ] ← Primary, accent-growth │
+│ [ DRY RUN ONLY ] ← Secondary, accent-data │
+│ [ EXPORT PLAN ] ← Ghost, fg-muted │
+└────────────────────────────────────────────────────────────┘
+
+**On PRUNE Click:**
+1. Validate: at least 1 item selected, no protected items selected
+2. Generate `PRUNE_MANIFEST.json`:
+```json  
+{  
+  "timestamp": "ISO8601",  
+  "target_path": "/abs/path",  
+  "git_commit": "abc123",  
+  "selected_files": [  
+    {"path": "src/utils/legacy-helpers.ts", "action": "delete", "confidence": 0.95, "reason": "unused exports"}  
+  ],  
+  "protected_skipped": [],  
+  "estimated_reclamation": {"bytes": 12345, "files": 3, "ci_seconds": 5},  
+  "safety": {"dry_run": false, "stash_created": true, "rollback_script": ".prune/rollback-<ts>.sh"}  
+}  
+POST TO PARENT WINDOW via window.parent.postMessage({type: 'PRUNE_TRIGGER', payload: manifest}, '*')
+Show modal: "Handoff initiated → Execution Guardians activated"
+6. EXPORT PLAN BUTTON
+Downloads surgical-pruning-plan-<mmdd>-<target>.json (same as manifest minus safety flags)
+ACCESSIBILITY (WCAG 2.1 AA)
+Semantic HTML: <nav role="tablist">, <button role="tab">, <ul role="listbox">
+ARIA: aria-selected, aria-controls, aria-live="polite" for live metrics
+Focus visible: 3px outline var(--accent-data), offset 2px
+Reduced motion: @media (prefers-reduced-motion) disables all non-essential animation
+High contrast mode: forced colors compatible
+DELIVERY
+Write complete HTML to .prune/surgical-pruning-<mmdd>-<target-folder>.html
+Open in default browser via terminal (open / xdg-open / start)
+
+---
+
+### 📋 AGENT 4: EXECUTION GUARDIANS — SAFE DELETION EXECUTORS
+
+**Role:** Atomic, auditable file removal with rollback    
+**Input:** `PRUNE_MANIFEST.json` (via postMessage or file)    
+**Output:** `EXECUTION_REPORT.json` + git commits
+
+```markdown
+## TWO AGENTS SPAWNED IN PARALLEL
+
+### 4A. GUARDIAN-EXECUTOR (The Blade)
+**Mandatory Steps (SEQUENTIAL, NO SKIP):**
+1. **Verify Manifest** — SHA256 match, git commit matches HEAD
+2. **Create Checkpoint** — `git stash push -m "prune-checkpoint-<timestamp>" --include-untracked`
+3. **Generate Rollback Script** — `.prune/rollback-<timestamp>.sh`:
+   ```bash  
+   #!/bin/bash  
+   set -euo pipefail  
+   git stash list | grep "prune-checkpoint-<timestamp>" | head -1 | cut -d: -f1 | xargs -r git stash pop  
+Dry Run (if requested) — Simulate deletions, write .prune/dry-run-<ts>.log
+Execute Deletions — For each file in manifest:
+git rm --cached <file> (if tracked) OR rm -f <file> (if untracked)
+Log: {"file": "...", "action": "deleted|skipped", "reason": "...", "bytes": 123}
+Verify No Build Break — Run pnpm build / cargo check / go build (per project)
+Commit — git commit -m "prune: remove <N> dead files [ci skip]"
+Emit Report — EXECUTION_REPORT.json
+4B. GUARDIAN-VERIFIER (The Shield)
+Runs CONCURRENTLY with Executor, validates each step:
+Watches .prune/execution.log (tail -f)
+Validates: no protected files touched, git status clean pre/post, build passes
+If ANY violation → writes .prune/ABORT → Executor reads and rolls back immediately
+Emits VERIFICATION_REPORT.json with pass/fail per check
+EXECUTION_REPORT.json SCHEMA
+{  
+  "manifest_sha256": "abc...",  
+  "checkpoint_stash": "stash@{0}",  
+  "rollback_script": ".prune/rollback-<ts>.sh",  
+  "dry_run": false,  
+  "files_processed": 18,  
+  "files_deleted": 15,  
+  "files_skipped": 3,  
+  "skipped_reasons": ["protected: config", "confidence < 70%", "test file"],  
+  "bytes_reclaimed": 234567,  
+  "build_verification": {"command": "pnpm build", "exit_code": 0, "duration_ms": 45000},  
+  "git_commit": "def456",  
+  "execution_duration_ms": 52000,  
+  "verification": {"passed": true, "checks": [...]}  
+}  
+
+---
+
+### 📋 AGENT 5: DEBRIEFER — USER SUMMARY (PARALLEL POST-EXECUTION)
+
+**Role:** Human-readable executive summary    
+**Input:** `EXECUTION_REPORT.json` + `HANDOFF_REVIEWER.json`    
+**Output:** Markdown summary delivered to user
+
+```markdown
+## TEMPLATE: SURGICAL PRUNING DEBRIEF
+
+# 🌿 Surgical Pruning Complete — <target-folder>
+**Date:** <ISO date> | **Duration:** <X>m <Y>s | **Commit:** `<short-sha>`
+
+## 📊 RECLAMATION SUMMARY
+| Metric | Before | After | Δ |
+|--------|--------|-------|---|
+| Files | 1,247 | 1,232 | -15 |
+| Lines of Code | 89,432 | 87,101 | -2,331 |
+| Bundle Size | 2.4 MB | 2.1 MB | -312 KB |
+| CI Time (est) | 4m 12s | 3m 58s | -14s |
+
+## ✅ REMOVED (Auto-prune, ≥95% confidence)
+- `src/utils/legacy-helpers.ts` — 2.1 KB — Unused exports: `formatDate`, `parseQuery`
+- `scripts/old-migration.js` — 890 B — Dead dependency: `legacy-db`
+- ... (13 more)
+
+## ⚠️ FLAGGED FOR REVIEW (70-94% confidence)
+- `src/components/DeprecatedCard.tsx` — 4.7 KB — Only referenced in Storybook
+- `src/hooks/useOldAnalytics.ts` — 1.3 KB — Dynamic import in lazy route
+
+## 🛡️ PROTECTED (Skipped)
+- `src/config/feature-flags.ts` — Config file
+- `tests/integration/legacy.test.ts` — Test file
+
+## 🔄 ROLLBACK
+```bash  
+# If anything breaks:  
+bash .prune/rollback-20260115-143022.sh  
+# Or manually:  
+git stash pop stash@{0}  # prune-checkpoint-20260115-143022  
+📈 NEXT STEPS
+Run test suite: pnpm test
+Verify bundle: ANALYZE=true pnpm build
+Consider adding Knip to CI (see Researcher suggestions below)
+📋 AGENT 6: CODEBASE AUDITOR — DEEP REVIEW (PARALLEL POST-EXECUTION)
+Role: Comprehensive post-prune codebase health check
+Input: Post-prune git state + HANDOFF_REVIEWER.json
+Output: AUDIT_REPORT.json → passed to Researcher Agent
+## AUDIT SCOPE (RUN AFTER PRUNE COMMIT)
+
+### 1. DEPENDENCY GRAPH HEALTH
+- Orphaned packages: `depcheck` / `knip` on new state
+- Circular dependencies: `madge --circular`
+- Duplicate dependencies: `pnpm dedupe --check`
+
+### 2. ARCHITECTURAL SMELLS
+- God modules: files > 500 lines, > 20 imports
+- Feature envy: modules importing from > 3 sibling directories
+- Shotgun surgery: changes touching > 5 files for single feature
+
+### 3. TEST COVERAGE IMPACT
+- Lines removed that had coverage → coverage delta
+- Dead test files (testing deleted code)
+- Mutation testing baseline: `stryker` (if configured)
+
+### 4. BUILD PERFORMANCE
+- Bundle analyzer comparison (before/after)
+- TypeScript compilation time: `tsc --extendedDiagnostics`
+- Module graph depth reduction
+
+### 5. SECURITY POSTURE
+- `npm audit` / `cargo audit` / `pip-audit` delta
+- Removed packages with known CVEs
+
+### AUDIT_REPORT.json SCHEMA
+```json  
+{  
+  "timestamp": "ISO8601",  
+  "git_commit": "def456",  
+  "dependency_health": {"orphans": [], "circular": [], "duplicates": []},  
+  "architectural_smells": [{"file": "...", "type": "god_module", "severity": "high", "metric": 623}],  
+  "coverage_delta": {"lines_removed": 2331, "covered_lines_lost": 145, "pct_change": -0.2},  
+  "build_performance": {"bundle_size_kb_before": 2456, "bundle_size_kb_after": 2144, "tsc_time_ms_delta": -1200},  
+  "security_delta": {"vulnerabilities_removed": 2, "packages_removed": 3},  
+  "recommendations": []  // ← Filled by Researcher Agent  
+}  
+
+---
+
+### 📋 AGENT 7: RESEARCHER (BEST PRACTICES) — IMPROVEMENT ADVISOR
+
+**Role:** Research-driven suggestions based on Auditor findings    
+**Input:** `AUDIT_REPORT.json` + `HANDOFF_RESEARCHER.json`    
+**Output:** 5+ prioritized, cited suggestions → appended to `AUDIT_REPORT.json`
+
+```markdown
+## RESEARCH METHODOLOGY
+For EACH finding in Audit Report:
+1. Query web for: "<finding_type> best practices 2024 <language> <framework>"
+2. Filter: recent (≤12 months), reputable source (engineering blogs, official docs)
+3. Synthesize: concrete, actionable, scoped to this codebase
+
+## MINIMUM 5 SUGGESTIONS (EXAMPLES)
+```json  
+{  
+  "suggestions": [  
+    {  
+      "id": "SUG-001",  
+      "priority": "HIGH",  
+      "category": "CI/CD",  
+      "title": "Add Knip to CI Pipeline",  
+      "finding": "15 dead files removed manually; no automation prevents regression",  
+      "action": "Add `knip --fail-on-issues` to GitHub Actions workflow",  
+      "config": "knip.json with entryPoints: ['**/*.test.ts', '**/*.config.*', 'next.config.js']",  
+      "source": "https://knip.dev/guides/ci",  
+      "effort": "LOW (15 min)",  
+      "impact": "Prevents dead code accumulation"  
+    },  
+    {  
+      "id": "SUG-002",  
+      "priority": "HIGH",  
+      "category": "Architecture",  
+      "title": "Decompose God Module: src/core/engine.ts (623 lines)",  
+      "finding": "Single module handles parsing, validation, transformation, output",  
+      "action": "Extract: Parser, Validator, Transformer, Formatter as separate modules",  
+      "source": "https://martinfowler.com/bliki/ModuleDecomposition.html",  
+      "effort": "MEDIUM (2-4h)",  
+      "impact": "Testability, parallel work, cognitive load"  
+    },  
+    {  
+      "id": "SUG-003",  
+      "priority": "MEDIUM",  
+      "category": "Dependencies",  
+      "title": "Replace moment.js (12MB) with date-fns / Temporal API",  
+      "finding": "moment.js in dependencies, 3 usages, mutable API",  
+      "action": "Migrate 3 call sites; add `knip` rule to block moment re-entry",  
+      "source": "https://github.com/you-dont-need/You-Dont-Need-Momentjs",  
+      "effort": "LOW (30 min)",  
+      "impact": "Bundle -12KB, security (moment unmaintained)"  
+    },  
+    {  
+      "id": "SUG-004",  
+      "priority": "MEDIUM",  
+      "category": "Testing",  
+      "title": "Add Mutation Testing Baseline",  
+      "finding": "Coverage 87% but mutation score unknown",  
+      "action": "Add Stryker to CI; target ≥80% mutation score",  
+      "source": "https://stryker-mutator.io/docs/getting-started/",  
+      "effort": "MEDIUM (1h setup)",  
+      "impact": "Detects tests that don't actually assert behavior"  
+    },  
+    {  
+      "id": "SUG-005",  
+      "priority": "LOW",  
+      "category": "Developer Experience",  
+      "title": "Enable TypeScript Project References for Monorepo Speed",  
+      "finding": "Multiple packages, single tsconfig, full rebuild on change",  
+      "action": "Convert to project references; use `tsc --build`",  
+      "source": "https://www.typescriptlang.org/docs/handbook/project-references.html",  
+      "effort": "HIGH (half day)",  
+      "impact": "Incremental builds, explicit dependency graph"  
+    }  
+  ]  
+}  
+📋 ORCHESTRATOR (YOU) — CONTROL FLOW
+# PSEUDO-CODE FOR SUPERVISOR LOGIC
+
+async def surgical_prune(target_path: str, user_prompt: str):  
+    # Phase 1: Reviewer  
+    reviewer_out = await spawn_agent("PRUNE-REVIEWER", {"target": target_path, "prompt": user_prompt})  
+    validate_handoff(reviewer_out, "HANDOFF_REVIEWER.json")  
+
+    # Phase 2: Researcher  
+    researcher_out = await spawn_agent("PRUNE-RESEARCHER", {"reviewer": reviewer_out, "prompt": user_prompt})  
+    validate_handoff(researcher_out, "HANDOFF_RESEARCHER.json")  
+
+    # Phase 3: Planner (generates HTML, opens browser, WAITS for user)  
+    html_path = await spawn_agent("PRUNING-PLANNER", {"reviewer": reviewer_out, "researcher": researcher_out})  
+    manifest = await wait_for_prune_trigger(html_path)  # Blocks until user clicks PRUNE  
+
+    # Phase 4: Execution Guardians (parallel)  
+    executor, verifier = await spawn_parallel(  
+        ("GUARDIAN-EXECUTOR", {"manifest": manifest}),  
+        ("GUARDIAN-VERIFIER", {"manifest": manifest})  
+    )  
+    execution_report = await wait_for_both(executor, verifier)  
+    if not execution_report.verification  
+```python
+    if not execution_report.verification.passed:
+        await spawn_agent("ROLLBACK-EXECUTOR", {"rollback_script": execution_report.rollback_script})
+        return {"status": "ROLLED_BACK", "reason": execution_report.verification.failures}
+
+    
+---
+
+### 📋 AGENT 5: DEBRIEFER — USER SUMMARY (PARALLEL POST-EXECUTION)
+
+**Role:** Human-readable executive summary    
+**Input:** `EXECUTION_REPORT.json` + `HANDOFF_REVIEWER.json`    
+**Output:** Markdown summary delivered to user
+
+```markdown
+## TEMPLATE: SURGICAL PRUNING DEBRIEF
+
+# 🌿 Surgical Pruning Complete — <target-folder>
+**Date:** <ISO date> | **Duration:** <X>m <Y>s | **Commit:** `<short-sha>`
+
+## 📊 RECLAMATION SUMMARY
+| Metric | Before | After | Δ |
+|--------|--------|-------|---|
+| Files | 1,247 | 1,232 | -15 |
+| Lines of Code | 89,432 | 87,101 | -2,331 |
+| Bundle Size | 2.4 MB | 2.1 MB | -312 KB |
+| CI Time (est) | 4m 12s | 3m 58s | -14s |
+
+## ✅ REMOVED (Auto-prune, ≥95% confidence)
+- `src/utils/legacy-helpers.ts` — 2.1 KB — Unused exports: `formatDate`, `parseQuery`
+- `scripts/old-migration.js` — 890 B — Dead dependency: `legacy-db`
+- ... (13 more)
+
+## ⚠️ FLAGGED FOR REVIEW (70-94% confidence)
+- `src/components/DeprecatedCard.tsx` — 4.7 KB — Only referenced in Storybook
+- `src/hooks/useOldAnalytics.ts` — 1.3 KB — Dynamic import in lazy route
+
+## 🛡️ PROTECTED (Skipped)
+- `src/config/feature-flags.ts` — Config file
+- `tests/integration/legacy.test.ts` — Test file
+
+## 🔄 ROLLBACK
+```bash  
+# If anything breaks:  
+bash .prune/rollback-20260115-143022.sh  
+# Or manually:  
+git stash pop stash@{0}  # prune-checkpoint-20260115-143022  
+
+## AUDIT SCOPE (RUN AFTER PRUNE COMMIT)
+
+### 1. DEPENDENCY GRAPH HEALTH
+- Orphaned packages: `depcheck` / `knip` on new state
+- Circular dependencies: `madge --circular`
+- Duplicate dependencies: `pnpm dedupe --check`
+
+### 2. ARCHITECTURAL SMELLS
+- God modules: files > 500 lines, > 20 imports
+- Feature envy: modules importing from > 3 sibling directories
+- Shotgun surgery: changes touching > 5 files for single feature
+
+### 3. TEST COVERAGE IMPACT
+- Lines removed that had coverage → coverage delta
+- Dead test files (testing deleted code)
+- Mutation testing baseline: `stryker` (if configured)
+
+### 4. BUILD PERFORMANCE
+- Bundle analyzer comparison (before/after)
+- TypeScript compilation time: `tsc --extendedDiagnostics`
+- Module graph depth reduction
+
+### 5. SECURITY POSTURE
+- `npm audit` / `cargo audit` / `pip-audit` delta
+- Removed packages with known CVEs
+
+### AUDIT_REPORT.json SCHEMA
+```json  
+{  
+  "timestamp": "ISO8601",  
+  "git_commit": "def456",  
+  "dependency_health": {"orphans": [], "circular": [], "duplicates": []},  
+  "architectural_smells": [{"file": "...", "type": "god_module", "severity": "high", "metric": 623}],  
+  "coverage_delta": {"lines_removed": 2331, "covered_lines_lost": 145, "pct_change": -0.2},  
+  "build_performance": {"bundle_size_kb_before": 2456, "bundle_size_kb_after": 2144, "tsc_time_ms_delta": -1200},  
+  "security_delta": {"vulnerabilities_removed": 2, "packages_removed": 3},  
+  "recommendations": []  // ← Filled by Researcher Agent  
+}  
+## AUDIT SCOPE (RUN AFTER PRUNE COMMIT)
+
+### 1. DEPENDENCY GRAPH HEALTH
+- Orphaned packages: `depcheck` / `knip` on new state
+- Circular dependencies: `madge --circular`
+- Duplicate dependencies: `pnpm dedupe --check`
+
+### 2. ARCHITECTURAL SMELLS
+- God modules: files > 500 lines, > 20 imports
+- Feature envy: modules importing from > 3 sibling directories
+- Shotgun surgery: changes touching > 5 files for single feature
+
+### 3. TEST COVERAGE IMPACT
+- Lines removed that had coverage → coverage delta
+- Dead test files (testing deleted code)
+- Mutation testing baseline: `stryker` (if configured)
+
+### 4. BUILD PERFORMANCE
+- Bundle analyzer comparison (before/after)
+- TypeScript compilation time: `tsc --extendedDiagnostics`
+- Module graph depth reduction
+
+### 5. SECURITY POSTURE
+- `npm audit` / `cargo audit` / `pip-audit` delta
+- Removed packages with known CVEs
+
+### AUDIT_REPORT.json SCHEMA
+```json  
+{  
+  "timestamp": "ISO8601",  
+  "git_commit": "def456",  
+  "dependency_health": {"orphans": [], "circular": [], "duplicates": []},  
+  "architectural_smells": [{"file": "...", "type": "god_module", "severity": "high", "metric": 623}],  
+  "coverage_delta": {"lines_removed": 2331, "covered_lines_lost": 145, "pct_change": -0.2},  
+  "build_performance": {"bundle_size_kb_before": 2456, "bundle_size_kb_after": 2144, "tsc_time_ms_delta": -1200},  
+  "security_delta": {"vulnerabilities_removed": 2, "packages_removed": 3},  
+  "recommendations": []  // ← Filled by Researcher Agent  
+}  
+
+---
+
+### 📋 AGENT 7: RESEARCHER (BEST PRACTICES) — IMPROVEMENT ADVISOR
+
+**Role:** Research-driven suggestions based on Auditor findings    
+**Input:** `AUDIT_REPORT.json` + `HANDOFF_RESEARCHER.json`    
+**Output:** 5+ prioritized, cited suggestions → appended to `AUDIT_REPORT.json`
+
+```markdown
+## RESEARCH METHODOLOGY
+For EACH finding in Audit Report:
+1. Query web for: "<finding_type> best practices 2024 <language> <framework>"
+2. Filter: recent (≤12 months), reputable source (engineering blogs, official docs)
+3. Synthesize: concrete, actionable, scoped to this codebase
+
+## MINIMUM 5 SUGGESTIONS (EXAMPLES)
+```json  
+{  
+  "suggestions": [  
+    {  
+      "id": "SUG-001",  
+      "priority": "HIGH",  
+      "category": "CI/CD",  
+      "title": "Add Knip to CI Pipeline",  
+      "finding": "15 dead files removed manually; no automation prevents regression",  
+      "action": "Add `knip --fail-on-issues` to GitHub Actions workflow",  
+      "config": "knip.json with entryPoints: ['**/*.test.ts', '**/*.config.*', 'next.config.js']",  
+      "source": "https://knip.dev/guides/ci",  
+      "effort": "LOW (15 min)",  
+      "impact": "Prevents dead code accumulation"  
+    },  
+    {  
+      "id": "SUG-002",  
+      "priority": "HIGH",  
+      "category": "Architecture",  
+      "title": "Decompose God Module: src/core/engine.ts (623 lines)",  
+      "finding": "Single module handles parsing, validation, transformation, output",  
+      "action": "Extract: Parser, Validator, Transformer, Formatter as separate modules",  
+      "source": "https://martinfowler.com/bliki/ModuleDecomposition.html",  
+      "effort": "MEDIUM (2-4h)",  
+      "impact": "Testability, parallel work, cognitive load"  
+    },  
+    {  
+      "id": "SUG-003",  
+      "priority": "MEDIUM",  
+      "category": "Dependencies",  
+      "title": "Replace moment.js (12MB) with date-fns / Temporal API",  
+      "finding": "moment.js in dependencies, 3 usages, mutable API",  
+      "action": "Migrate 3 call sites; add `knip` rule to block moment re-entry",  
+      "source": "https://github.com/you-dont-need/You-Dont-Need-Momentjs",  
+      "effort": "LOW (30 min)",  
+      "impact": "Bundle -12KB, security (moment unmaintained)"  
+    },  
+    {  
+      "id": "SUG-004",  
+      "priority": "MEDIUM",  
+      "category": "Testing",  
+      "title": "Add Mutation Testing Baseline",  
+      "finding": "Coverage 87% but mutation score unknown",  
+      "action": "Add Stryker to CI; target ≥80% mutation score",  
+      "source": "https://stryker-mutator.io/docs/getting-started/",  
+      "effort": "MEDIUM (1h setup)",  
+      "impact": "Detects tests that don't actually assert behavior"  
+    },  
+    {  
+      "id": "SUG-005",  
+      "priority": "LOW",  
+      "category": "Developer Experience",  
+      "title": "Enable TypeScript Project References for Monorepo Speed",  
+      "finding": "Multiple packages, single tsconfig, full rebuild on change",  
+      "action": "Convert to project references; use `tsc --build`",  
+      "source": "https://www.typescriptlang.org/docs/handbook/project-references.html",  
+      "effort": "HIGH (half day)",  
+      "impact": "Incremental builds, explicit dependency graph"  
+    }  
+  ]  
+# PSEUDO-CODE FOR SUPERVISOR LOGIC
+
+async def surgical_prune(target_path: str, user_prompt: str):  
+    # Phase 1: Reviewer  
+    reviewer_out = await spawn_agent("PRUNE-REVIEWER", {"target": target_path, "prompt": user_prompt})  
+    validate_handoff(reviewer_out, "HANDOFF_REVIEWER.json")  
+
+    # Phase 2: Researcher  
+    researcher_out = await spawn_agent("PRUNE-RESEARCHER", {"reviewer": reviewer_out, "prompt": user_prompt})  
+    validate_handoff(researcher_out, "HANDOFF_RESEARCHER.json")  
+
+    # Phase 3: Planner (generates HTML, opens browser, WAITS for user)  
+    html_path = await spawn_agent("PRUNING-PLANNER", {"reviewer": reviewer_out, "researcher": researcher_out})  
+    manifest = await wait_for_prune_trigger(html_path)  # Blocks until user clicks PRUNE  
+
+    # Phase 4: Execution Guardians (parallel)  
+    executor, verifier = await spawn_parallel(  
+        ("GUARDIAN-EXECUTOR", {"manifest": manifest}),  
+        ("GUARDIAN-VERIFIER", {"manifest": manifest})  
+    )  
+    execution_report = await wait_for_both(executor, verifier)  
+    if not execution_report.verification  
+```python
+    if not execution_report.verification.passed:
+        await spawn_agent("ROLLBACK-EXECUTOR", {"rollback_script": execution_report.rollback_script})
+        return {"status": "ROLLED_BACK", "reason": execution_report.verification.failures}
+
+    # Phase 5: Post-execution parallel agents
+    debrief, audit = await spawn_parallel(
+        ("DEBRIEFER", {"execution": execution_report, "reviewer": reviewer_out}),
+        ("CODEBASE-AUDITOR", {"post_prune_commit": execution_report.git_commit, "reviewer": reviewer_out})
+    )
+
+    # Phase 6: Researcher (depends on Auditor)
+    audit_report = await audit
+    suggestions = await spawn_agent("RESEARCHER-BEST-PRACTICES", {"audit": audit_report, "researcher": researcher_out})
+
+    # Final delivery
+    return {
+        "status": "COMPLETE",
+        "debrief": debrief,
+        "audit_report": {**audit_report, "suggestions": suggestions},
+        "rollback_script": execution_report.rollback_script,
+        "html_plan": html_path
+    }
+
+yaml# Suggested cronjob for skill creation (if you want this as reusable skill)
+name: surgical-pruning-workflow
+skills:
+  - systematic-debugging
+  - writing-plans
+  - code-quality-patterns
+  - github-code-review
+prompt: |
+  Execute the Surgical Pruning multi-agent workflow per the enhanced specification.
+  Target path and user intent provided at runtime.
+  Enforce all safety gates. Deliver debrief + audit + suggestions.
+

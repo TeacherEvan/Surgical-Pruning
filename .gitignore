@@ -1,0 +1,73 @@
+# Surgical Pruning — .gitignore
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Node / Package Managers
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build Outputs
+dist/
+build/
+.next/
+.vercel/
+out/
+*.tsbuildinfo
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+secrets/
+.aws/
+.ssh/
+
+# Lockfiles (committed in projects, not in spec repo)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+Cargo.lock
+
+# Test / Coverage
+coverage/
+.nyc_output/
+*.lcov
+*.coverage
+
+# Pruning Artifacts (generated during operation)
+.prune/
+*.prune.log
+rollback-*.sh
+dry-run-*.log
+HANDOFF_*.json
+PRUNE_MANIFEST.json
+EXECUTION_REPORT.json
+AUDIT_REPORT.json
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Generated HTML (from Planner)
+surgical-pruning-*.html
