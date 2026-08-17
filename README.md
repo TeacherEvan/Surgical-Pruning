@@ -23,6 +23,7 @@ Surgical Pruning is a **multi-agent workflow specification** for identifying, va
 ```
 
 **Post-execution agents** (parallel):
+
 - **Debriefer** — Human-readable summary
 - **Codebase Auditor** — Deep health check
 - **Researcher (v2)** — Improvement suggestions based on audit findings
@@ -44,48 +45,55 @@ cd Surgical-Pruning
 
 ## 🛡️ Safety First (Non-Negotiable)
 
-| Policy | Enforcement |
-|--------|-------------|
-| **No deletion without confirmation** | HTML interface requires explicit checkbox selection |
-| **Dry-run mandatory** | Every prune plan logs simulated deletions first |
-| **Git checkpoint** | `git stash push --include-untracked` before any mutation |
-| **Rollback script** | Auto-generated `.prune/rollback-<timestamp>.sh` |
-| **Protected paths** | `.git/`, configs, tests, entry points, secrets — always excluded |
-| **Confidence thresholds** | ≥95% auto-prune, 70-94% review required, <70% manual only |
+| Policy                               | Enforcement                                                      |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| **No deletion without confirmation** | HTML interface requires explicit checkbox selection              |
+| **Dry-run mandatory**                | Every prune plan logs simulated deletions first                  |
+| **Git checkpoint**                   | `git stash push --include-untracked` before any mutation         |
+| **Rollback script**                  | Auto-generated `.prune/rollback-<timestamp>.sh`                  |
+| **Protected paths**                  | `.git/`, configs, tests, entry points, secrets — always excluded |
+| **Confidence thresholds**            | ≥95% auto-prune, 70-94% review required, <70% manual only        |
 
 ---
 
 ## 📋 Agent Specification Summary
 
 ### Agent 1: PRUNE-REVIEWER (System Cartographer)
+
 - **Input**: Target directory path
 - **Output**: `.prune/handoff-reviewer.json` — full dependency graph, file inventory, dead-code signals
 - **Tools**: `search_files`, `terminal` (git, find, wc), `read_file`
 
 ### Agent 2: PRUNE-RESEARCHER (Practice Investigator)
+
 - **Input**: Reviewer handoff + user prompt
 - **Output**: `.prune/handoff-researcher.json` — language-specific tooling, patterns, CI integration guidance
 - **Tools**: `web_search` (targeted per language/framework), `read_file` (local configs)
 
 ### Agent 3: PRUNING-PLANNER (Interactive HTML Generator)
+
 - **Input**: Both handoffs
 - **Output**: `surgical-pruning-<mmdd>-<target>.html` — self-contained, zero-dependency planning interface
 - **Features**: Radial tree, Mermaid flowchart, D3 circle pack, virtualized checklist, live reclamation metrics
 
 ### Agents 4A/4B: EXECUTION GUARDIANS (Executor + Verifier)
+
 - **Input**: `PRUNE_MANIFEST.json` from Planner
 - **Output**: `EXECUTION_REPORT.json` + git commit
 - **Parallel execution**: Executor deletes, Verifier validates each step, abort on any violation
 
 ### Agent 5: DEBRIEFER (User Summary)
+
 - **Input**: Execution report + Reviewer handoff
 - **Output**: Markdown summary with reclamation tables, removed/flagged/protected lists, rollback instructions
 
 ### Agent 6: CODEBASE AUDITOR (Deep Review)
+
 - **Input**: Post-prune git state + Reviewer handoff
 - **Output**: `AUDIT_REPORT.json` — dependency health, architectural smells, coverage impact, build perf, security delta
 
 ### Agent 7: RESEARCHER v2 (Improvement Advisor)
+
 - **Input**: Audit report + Researcher handoff
 - **Output**: 5+ prioritized, cited suggestions appended to audit report
 

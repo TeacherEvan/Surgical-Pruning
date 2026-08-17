@@ -4,10 +4,10 @@
 
 This is a **specification repository** — it contains documentation and design documents, not executable code. Security vulnerabilities in the specification itself are unlikely, but vulnerabilities in **reference implementations** (when they exist) will be tracked separately.
 
-| Version | Supported |
-|---------|-----------|
-| 2.x (current spec) | ✅ Active |
-| 1.x | ❌ Deprecated |
+| Version            | Supported     |
+| ------------------ | ------------- |
+| 2.x (current spec) | ✅ Active     |
+| 1.x                | ❌ Deprecated |
 
 ---
 
@@ -20,6 +20,7 @@ If you discover a security vulnerability in a **reference implementation** of Su
 Email: **security@teacherevan.dev**
 
 Include:
+
 - Description of the vulnerability
 - Steps to reproduce
 - Affected component (agent name, file, version)
@@ -28,12 +29,12 @@ Include:
 
 ### ⏱️ Response Timeline
 
-| Phase | Target |
-|-------|--------|
-| Acknowledgment | ≤ 48 hours |
-| Initial assessment | ≤ 5 business days |
-| Fix development | ≤ 30 days (depending on severity) |
-| Public disclosure | After fix is released |
+| Phase              | Target                            |
+| ------------------ | --------------------------------- |
+| Acknowledgment     | ≤ 48 hours                        |
+| Initial assessment | ≤ 5 business days                 |
+| Fix development    | ≤ 30 days (depending on severity) |
+| Public disclosure  | After fix is released             |
 
 We follow [Coordinated Vulnerability Disclosure](https://en.wikipedia.org/wiki/Coordinated_vulnerability_disclosure) — we will not publicly disclose until a fix is available.
 
@@ -42,6 +43,7 @@ We follow [Coordinated Vulnerability Disclosure](https://en.wikipedia.org/wiki/C
 ## Scope
 
 ### In Scope (when implementations exist)
+
 - Agent execution logic (file deletion, git operations)
 - Planner HTML interface (XSS, CSRF, injection)
 - Handoff artifact validation (JSON schema bypass)
@@ -49,6 +51,7 @@ We follow [Coordinated Vulnerability Disclosure](https://en.wikipedia.org/wiki/C
 - Dependency resolution in Researcher agent
 
 ### Out of Scope
+
 - The specification document itself (`docs/SurgicalpruningConcept.txt`)
 - Third-party tools referenced (Knip, Vulture, Depcheck, etc.) — report to their maintainers
 - Git hosting platform vulnerabilities (GitHub, GitLab)
@@ -60,14 +63,14 @@ We follow [Coordinated Vulnerability Disclosure](https://en.wikipedia.org/wiki/C
 
 The Surgical Pruning specification bakes in security by design:
 
-| Principle | Implementation |
-|-----------|----------------|
-| **Principle of least privilege** | Agents receive only required handoff data |
-| **Defense in depth** | Executor + Verifier dual-agent validation |
-| **Audit trail** | Every action logged, SHA256 manifests, git commits |
-| **Fail-safe defaults** | Dry-run mandatory, protected paths immutable |
-| **Rollback capability** | Auto-generated rollback script per operation |
-| **No secrets in handoffs** | Exclusion patterns prevent `.env*`, `*.key`, `*.pem` exposure |
+| Principle                        | Implementation                                                |
+| -------------------------------- | ------------------------------------------------------------- |
+| **Principle of least privilege** | Agents receive only required handoff data                     |
+| **Defense in depth**             | Executor + Verifier dual-agent validation                     |
+| **Audit trail**                  | Every action logged, SHA256 manifests, git commits            |
+| **Fail-safe defaults**           | Dry-run mandatory, protected paths immutable                  |
+| **Rollback capability**          | Auto-generated rollback script per operation                  |
+| **No secrets in handoffs**       | Exclusion patterns prevent `.env*`, `*.key`, `*.pem` exposure |
 
 ---
 
@@ -99,4 +102,4 @@ For security questions not related to vulnerability disclosure:
 
 ---
 
-*Last updated: 2026-08-16*
+_Last updated: 2026-08-16_

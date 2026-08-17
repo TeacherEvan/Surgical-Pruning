@@ -7,25 +7,30 @@ Thank you for your interest in contributing! This specification benefits from di
 ## 🎯 Ways to Contribute
 
 ### 1. Specification Improvements
+
 - Clarify ambiguous sections
 - Add missing edge cases (dynamic imports, reflection, plugin systems)
 - Improve confidence scoring algorithms
 - Add new language/framework entries to Researcher agent
 
 ### 2. Reference Implementations
+
 The spec is language-agnostic. Implementations welcome in:
+
 - **TypeScript/Node.js** — Native ecosystem fit
 - **Python** — Great for AST analysis
 - **Rust** — Performance-critical graph operations
 - **Go** — Excellent tooling integration
 
 ### 3. Tooling & Templates
+
 - CI/CD workflow templates (GitHub Actions, GitLab CI, Azure Pipelines)
 - VS Code / JetBrains extensions for the Planner HTML
 - Pre-commit hook templates (Husky, lefthook)
 - Knip/Depcheck/Vulture config templates per framework
 
 ### 4. Documentation
+
 - Translations
 - Tutorials / walkthroughs
 - Architecture decision records (ADRs)
@@ -66,17 +71,18 @@ git push origin feat/your-contribution
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-| Prefix | Meaning |
-|--------|---------|
-| `feat:` | New feature (agent, tool support, language) |
-| `fix:` | Bug fix in spec or implementation |
-| `docs:` | Documentation only |
-| `refactor:` | Code restructuring, no behavior change |
-| `test:` | Adding tests |
-| `chore:` | Maintenance, deps, CI |
-| `spec:` | Specification document changes |
+| Prefix      | Meaning                                     |
+| ----------- | ------------------------------------------- |
+| `feat:`     | New feature (agent, tool support, language) |
+| `fix:`      | Bug fix in spec or implementation           |
+| `docs:`     | Documentation only                          |
+| `refactor:` | Code restructuring, no behavior change      |
+| `test:`     | Adding tests                                |
+| `chore:`    | Maintenance, deps, CI                       |
+| `spec:`     | Specification document changes              |
 
 **Examples:**
+
 ```
 feat(planner): add circle-pack diagram mode with D3.js
 fix(reviewer): handle symlinks in dependency graph

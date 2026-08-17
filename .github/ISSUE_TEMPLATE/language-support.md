@@ -1,9 +1,9 @@
 ---
 name: Language Support Request
 about: Request support for a new language in the Researcher agent
-title: '[LANG] '
-labels: ['language-support', 'researcher', 'needs-triage']
-assignees: ''
+title: "[LANG] "
+labels: ["language-support", "researcher", "needs-triage"]
+assignees: ""
 ---
 
 ## Language
@@ -21,7 +21,7 @@ Target language: ___________ (e.g., Go, Rust, Java, C#, Ruby, Swift)
 List known tools for this language:
 
 | Tool | Maturity | Confidence | Notes |
-|------|----------|------------|-------|
+| ---- | -------- | ---------- | ----- |
 |      |          |            |       |
 
 ## Entry Point Patterns

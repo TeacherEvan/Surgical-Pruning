@@ -1,9 +1,9 @@
 ---
 name: Specification Improvement
 about: Propose a change to the Surgical Pruning specification
-title: '[SPEC] '
-labels: ['specification', 'needs-triage']
-assignees: ''
+title: "[SPEC] "
+labels: ["specification", "needs-triage"]
+assignees: ""
 ---
 
 ## Area of Specification
@@ -28,14 +28,11 @@ Which agent or section does this affect?
 
 **Current behavior** (quote from spec or describe):
 
-
 **Proposed behavior**:
-
 
 ## Rationale
 
 Why is this change needed? What problem does it solve?
-
 
 ## Impact Analysis
 
