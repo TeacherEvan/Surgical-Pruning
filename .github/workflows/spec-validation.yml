@@ -8,19 +8,11 @@ on:
 
 jobs:
   validate-spec:
-    name: Validate Specification
+    name: Validate Specification & Docs
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Validate JSON schemas in spec
-        run: |
-          # Extract and validate JSON examples from the spec
-          echo "Checking for valid JSON in specification..."
-          # This is a placeholder - actual validation would parse the spec
-          # and validate embedded JSON schemas
-          echo "✅ Spec validation placeholder passed"
 
       - name: Check required files exist
         run: |
@@ -31,14 +23,23 @@ jobs:
             "CODE_OF_CONDUCT.md"
             "SECURITY.md"
             "docs/SurgicalpruningConcept.txt"
+            "IMPLEMENTATION_PLAN.md"
           )
           for file in "${required_files[@]}"; do
             if [[ ! -f "$file" ]]; then
-              echo "❌ Missing required file: $file"
+              echo "Missing required file: $file"
               exit 1
             fi
-            echo "✅ Found: $file"
+            echo "Found: $file"
           done
+
+      - name: Verify concept spec is non-empty
+        run: |
+          if [[ ! -s "docs/SurgicalpruningConcept.txt" ]]; then
+            echo "Spec file is empty"
+            exit 1
+          fi
+          echo "Spec file present and non-empty"
 
       - name: Validate markdown links
         uses: gaurav-nelson/github-action-markdown-link-check@v1
