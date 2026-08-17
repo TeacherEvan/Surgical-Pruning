@@ -92,6 +92,7 @@ export const HandoffReviewer = z.object({
   folder_summary: z.array(FolderSummary),
   effected_systems: z.array(EffectedSystem),
   constraints: Constraints,
+  external_knip_issues: z.array(z.string()).optional(),
 });
 
 export type HandoffReviewer = z.infer<typeof HandoffReviewer>;
