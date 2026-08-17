@@ -25,6 +25,7 @@ yarn-error.log*
 # Build Outputs
 dist/
 build/
+.turbo/
 .next/
 .vercel/
 out/

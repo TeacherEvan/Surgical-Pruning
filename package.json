@@ -1,0 +1,31 @@
+{
+  "name": "surgical-pruning",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-agent orchestration system for surgical, auditable codebase pruning",
+  "author": "TeacherEvan",
+  "license": "MIT",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,json,md}\"",
+    "prepare": "husky install",
+    "cli": "pnpm --filter @surgical-pruning/cli start"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.10.0",
+    "husky": "^8.0.3",
+    "prettier": "^3.1.0",
+    "turbo": "^1.11.0",
+    "typescript": "^5.3.0",
+    "typescript-eslint": "^8.67.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@9.15.9"
+}
