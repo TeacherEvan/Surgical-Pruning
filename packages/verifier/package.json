@@ -19,8 +19,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@surgical-pruning/core": "workspace:*",
-    "execa": "^10.0.1"
+    "@surgical-pruning/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
