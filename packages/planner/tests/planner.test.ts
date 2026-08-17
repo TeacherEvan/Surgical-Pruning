@@ -1,12 +1,155 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtemp, rm, mkdir, writeFile, readFile, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { runPlanner } from "../src/index.js";
 
-describe("planner stub (NOT yet implemented)", () => {
-  it("returns placeholder.html and does not throw", async () => {
-    const out = await runPlanner({
-      reviewerHandoff: {},
-      researcherHandoff: {},
-    });
-    expect(out).toBe("placeholder.html");
+function makeReviewerHandoff() {
+  const iso = new Date().toISOString();
+  return {
+    metadata: {
+      target_path: "/tmp/demo",
+      scan_timestamp: iso,
+      scan_duration_ms: 1,
+      git_root: "/tmp/demo",
+      git_branch: "main",
+      git_commit: "abc1234",
+    },
+    tree_diagram: "tree",
+    file_inventory: [
+      {
+        path: "src/dead.ts",
+        size_bytes: 100,
+        lines: 10,
+        language: "typescript",
+        last_modified: iso,
+        git_history: {
+          first_commit: iso,
+          last_commit: iso,
+          commit_count: 1,
+          authors: ["x"],
+        },
+        dependency_graph: {
+          imports: [],
+          imported_by: [],
+          entry_point_distance: 3,
+          is_entry_point: false,
+          is_test: false,
+          is_config: false,
+        },
+        dead_code_signals: {
+          unused_exports: ["foo"],
+          unreachable: false,
+          zero_references: true,
+          confidence: 0.99,
+        },
+      },
+      {
+        path: ".github/workflows/ci.yml",
+        size_bytes: 50,
+        lines: 5,
+        language: "yaml",
+        last_modified: iso,
+        git_history: {
+          first_commit: iso,
+          last_commit: iso,
+          commit_count: 1,
+          authors: ["x"],
+        },
+        dependency_graph: {
+          imports: [],
+          imported_by: [],
+          entry_point_distance: 1,
+          is_entry_point: false,
+          is_test: false,
+          is_config: true,
+        },
+        dead_code_signals: {
+          unused_exports: [],
+          unreachable: false,
+          zero_references: false,
+          confidence: 0.1,
+        },
+      },
+    ],
+    folder_summary: [],
+    effected_systems: [],
+    constraints: {
+      exclusion_patterns_applied: [],
+      languages_detected: ["typescript"],
+      frameworks_detected: [],
+      package_managers: ["pnpm"],
+      monorepo: true,
+    },
+  };
+}
+
+function makeResearcherHandoff() {
+  return {
+    user_prompt_analysis: {
+      intent: "prune",
+      scope: "folder",
+      aggressiveness: "moderate",
+      constraints_from_user: [],
+    },
+    language_specific_practices: {},
+    general_practices: [],
+    tool_recommendations: [],
+    future_proofing: {
+      ci_integration: "",
+      precommit_hook: "",
+      dependency_budget: "",
+    },
+  };
+}
+
+describe("runPlanner", () => {
+  let tmp: string;
+
+  beforeEach(async () => {
+    tmp = await mkdtemp(join(tmpdir(), "planner-test-"));
+  });
+
+  afterEach(async () => {
+    await rm(tmp, { recursive: true, force: true });
+  });
+
+  it("returns an absolute .html path and writes a self-contained plan to disk", async () => {
+    const reviewerHandoff = makeReviewerHandoff();
+    const researcherHandoff = makeResearcherHandoff();
+
+    const out = await runPlanner({ reviewerHandoff, researcherHandoff, cwd: tmp });
+
+    expect(typeof out).toBe("string");
+    expect(out.endsWith(".html")).toBe(true);
+
+    // File exists on disk
+    const st = await stat(out);
+    expect(st.isFile()).toBe(true);
+
+    const html = await readFile(out, "utf8");
+
+    // Self-contained HTML markers
+    expect(html).toContain("<!DOCTYPE html>");
+    expect(html).toContain("src/dead.ts");
+
+    // Export / manifest UI present
+    expect(html).toMatch(/PRUNE_MANIFEST|EXPORT PLAN/);
+
+    // Protected file is grouped as "Protected" (never a delete-default state)
+    expect(html).toContain(".github/workflows/ci.yml");
+    expect(html).toContain('data-group="Protected"');
+
+    // The auto-prune candidate should be pre-checked for deletion
+    expect(html).toContain('data-group="Auto-prune"');
+    expect(html).toContain("checked");
+  });
+
+  it("returns a deterministic filename derived from target_path", async () => {
+    const reviewerHandoff = makeReviewerHandoff();
+    const researcherHandoff = makeResearcherHandoff();
+    const result = await runPlanner({ reviewerHandoff, researcherHandoff, cwd: tmp });
+    expect(result).toContain("surgical-pruning-");
+    expect(result).toContain("demo.html");
   });
 });
