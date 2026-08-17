@@ -124,6 +124,14 @@ export async function runExecutor(
       fileResults.push({ file: relPath, action: "skipped", reason: "protected", bytes: 0 });
       continue;
     }
+    // Safety gate (AC-005): never delete when the manifest's git_commit does
+    // not match HEAD (and this is not a dry run). Abort this deletion.
+    if (!dryRun && !commitMatch) {
+      filesSkipped++;
+      skippedReasons.push(`git commit mismatch (expected ${manifest?.git_commit}, got ${headShort}): ${relPath}`);
+      fileResults.push({ file: relPath, action: "skipped", reason: "commit_mismatch", bytes: 0 });
+      continue;
+    }
     if (!existsSync(abs)) {
       filesSkipped++;
       skippedReasons.push(`not found: ${relPath}`);

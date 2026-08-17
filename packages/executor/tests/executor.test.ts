@@ -101,4 +101,33 @@ describe("runExecutor (Agent 4A)", () => {
     );
     expect(afterCount).toBe(beforeCount + 1);
   });
+
+  it("non-dry-run with git_commit mismatch: aborts (0 deletions, passed=false)", async () => {
+    await writeFile(join(tmp, "dead.ts"), "export const x = 1;", "utf-8");
+    execSync("git add -A && git commit -qm init", { cwd: tmp });
+
+    const manifest = {
+      timestamp: new Date().toISOString(),
+      target_path: tmp,
+      git_commit: "deadbeef", // deliberately wrong vs HEAD
+      selected_files: [
+        { path: "dead.ts", action: "delete", confidence: 0.99, reason: "unused" },
+      ],
+      protected_skipped: [],
+      estimated_reclamation: { bytes: 0, files: 0, ci_seconds: 0 },
+      safety: { dry_run: false, stash_created: false, rollback_script: "" },
+    };
+    const manifestPath = join(tmp, "prune-manifest.json");
+    await writeFile(manifestPath, JSON.stringify(manifest), "utf-8");
+
+    const report = await runExecutor({ manifestPath, cwd: tmp });
+
+    expect(report.files_deleted).toBe(0); // aborted
+    expect(report.verification.passed).toBe(false);
+    expect(
+      report.skipped_reasons.some((r) => /commit mismatch/i.test(r)),
+    ).toBe(true);
+    // dead.ts must still exist (abort means no deletion)
+    await expect(stat(join(tmp, "dead.ts"))).resolves.toBeDefined();
+  });
 });
