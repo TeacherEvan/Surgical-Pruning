@@ -1,0 +1,65 @@
+# Consistency Gate Review - Cycle 1
+
+## Review: REQUIREMENTS ↔ CODEBASE-STATE ↔ ARCHITECTURE ↔ TODO
+
+### REQUIREMENTS.md vs CODEBASE-STATE.md
+✅ REQ-001 through REQ-015 map to baseline inventory items and known issues
+✅ NFR-001 (safety) matches initial risks (git operations must be bulletproof)
+✅ NFR-002 (HTML self-contained) matches architecture decision DEC-003
+✅ NFR-003 (WCAG 2.1 AA) captured in architecture security boundaries
+✅ Constraints (TypeScript, Node >=20, pnpm, Turborepo) match tech stack in CODEBASE-STATE
+✅ Assumptions (git repo, Node/pnpm, web API, browser) consistent across both
+
+### CODEBASE-STATE.md vs ARCHITECTURE.md
+✅ Baseline file inventory matches areas being edited (core exists, 7 agent packages to create)
+✅ Technology stack (TypeScript, pnpm, Turborepo, Vitest) matches architecture interfaces
+✅ Research-backed decisions in CODEBASE-STATE trace to DEC-001 through DEC-010 in ARCHITECTURE
+✅ Gate commands align with CI/CD plans in architecture
+✅ Known issues (no fixtures, no CI, only core exists) match architecture edit areas
+✅ Initial risks map to architecture risk column (Executor=CRITICAL, Verifier=HIGH, Planner=HIGH)
+
+### ARCHITECTURE.md vs TODO.md
+✅ All 9 package areas in architecture have corresponding OBJ-001 through OBJ-011
+✅ Data/control flow steps 1-13 map to OBJ-003 through OBJ-011 sequentially
+✅ Security boundaries (protected paths, confidence thresholds, manifest SHA256) map to OBJ-006, OBJ-007, OBJ-003
+✅ Acceptance criteria mapping table in ARCHITECTURE matches AC-001 through AC-015 in TODO evidence
+✅ CI/CD and docs in architecture map to OBJ-013, OBJ-014
+✅ npm release in architecture maps to OBJ-015
+
+### REQUIREMENTS.md vs TODO.md
+✅ All 15 REQs have corresponding OBJs (REQ-001→OBJ-001, REQ-002→OBJ-002, etc.)
+✅ All 15 ACs have evidence validation methods in TODO
+✅ NFRs trace to specific OBJs (NFR-001→OBJ-006/007, NFR-002→OBJ-005, NFR-003→OBJ-005, NFR-004→all, NFR-005→OBJ-001, NFR-006→OBJ-012)
+✅ 15 objectives meet ≥10 meaningful tickable objectives requirement
+
+### TRACEABILITY Check
+| Objective | Requirement | Test/Evidence |
+|---|---|---|
+| OBJ-001 | REQ-001 | AC-001: build exit code |
+| OBJ-002 | REQ-002 | AC-002: schema validation |
+| OBJ-003 | REQ-004 | AC-004: handoff-reviewer.json valid |
+| OBJ-004 | REQ-005 | AC-005: handoff-researcher.json valid |
+| OBJ-005 | REQ-006 | AC-006: HTML 5 components |
+| OBJ-006 | REQ-007 | AC-007: stash + rollback |
+| OBJ-007 | REQ-008 | AC-008: ABORT on violation |
+| OBJ-008 | REQ-009 | AC-009: markdown sections |
+| OBJ-009 | REQ-010 | AC-010: audit 5 areas |
+| OBJ-010 | REQ-011 | AC-011: ≥5 suggestions |
+| OBJ-011 | REQ-003 | AC-003: CLI help + dry-run |
+| OBJ-012 | REQ-012 | AC-012: E2E fixtures pass |
+| OBJ-013 | REQ-013 | AC-013: CI runs all gates |
+| OBJ-014 | REQ-014 | AC-014: docs exist |
+| OBJ-015 | REQ-015 | AC-015: npm publish |
+
+## Verdict: PASS
+
+All four artifacts are consistent. No inconsistencies found requiring REPLAN.
+
+### Evidence
+- REQUIREMENTS.md: 15 functional reqs, 6 non-functional, constraints, assumptions, 15 ACs
+- CODEBASE-STATE.md: Complete baseline with research decisions integrated
+- ARCHITECTURE.md: Full target architecture with 13 edit areas, data flow, security boundaries
+- TODO.md: 15 objectives with evidence blocks, all traceable to REQs and ACs
+
+### Next Action
+Proceed to IMPLEMENT state. Begin with OBJ-001 (monorepo structure + core package completion).
