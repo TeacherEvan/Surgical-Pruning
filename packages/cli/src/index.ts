@@ -13,15 +13,13 @@ import { runResearcherV2 } from "@surgical-pruning/researcher-v2";
 import { mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = resolve(__filename, "..");
 
 export interface CLIOptions {
   targetPath: string;
   userPrompt?: string;
   dryRun?: boolean;
+  /** When true, systematically run Agents 4A/4B against the persisted plan. OFF by default — preserves the human-in-the-loop safety model. */
+  execute?: boolean;
   outputDir?: string;
   cwd?: string;
 }
@@ -31,6 +29,7 @@ export async function runCLI(options: CLIOptions): Promise<void> {
     targetPath,
     userPrompt = "",
     dryRun = false,
+    execute = false,
     cwd = process.cwd(),
   } = options;
   const absTarget = resolve(cwd, targetPath);
@@ -51,6 +50,7 @@ export async function runCLI(options: CLIOptions): Promise<void> {
   console.log(`Target: ${absTarget}`);
   console.log(`Prompt: ${userPrompt || "(none)"}`);
   console.log(`Dry Run: ${dryRun ? "YES" : "NO"}`);
+  console.log(`Execute deletions (Agent 4A/4B): ${execute ? "YES (explicit)" : "NO (plan only)"}`);
   console.log("");
 
   // Ensure .prune directory exists
@@ -115,19 +115,24 @@ export async function runCLI(options: CLIOptions): Promise<void> {
     reviewerHandoff,
     researcherHandoff,
     cwd,
+    // The persisted PRUNE_MANIFEST.json mirrors the browser plan. Without an
+    // explicit --execute, it is written as a dry-run plan (no deletions). The
+    // verifier's git-commit check still gates real changes.
+    dryRun: !execute,
   });
 
   console.log(`Planner output: ${plannerOutput}`);
   console.log("");
 
   // ============================================================================
-  // PHASE 4: AGENTS 4A/4B — EXECUTION GUARDIANS (only if a manifest is present)
+  // PHASE 4: AGENTS 4A/4B — EXECUTION GUARDIANS
   // ============================================================================
-  // Per the spec's safety model, real deletions require explicit user
-  // confirmation captured by the planner's HTML interface (PRUNE_MANIFEST.json).
-  // The unattended CLI only proceeds to execution if such a manifest exists.
+  // The Planner now persists PRUNE_MANIFEST.json to .prune/ as a side artifact.
+  // Real deletions require the explicit --execute flag (default OFF), preserving
+  // the human-in-the-loop safety model: the unattended CLI never deletes without
+  // an opt-in. Without --execute the pipeline stops after planning.
   const manifestPath = join(cwd, ".prune", "PRUNE_MANIFEST.json");
-  if (existsSync(manifestPath)) {
+  if (execute && existsSync(manifestPath)) {
     console.log(
       "┌─────────────────────────────────────────────────────────────────────────────┐",
     );
@@ -152,13 +157,21 @@ export async function runCLI(options: CLIOptions): Promise<void> {
     );
     console.log("");
   } else {
-    console.log(
-      "⚠ Skipping Agents 4A/4B execution — no PRUNE_MANIFEST.json present.",
-    );
-    console.log(
-      "  Generate + confirm a plan in the planner HTML, then place PRUNE_MANIFEST.json",
-    );
-    console.log("  in .prune/ to run the deletion guardians.");
+    if (!existsSync(manifestPath)) {
+      console.log(
+        "⚠ Skipping Agents 4A/4B — no PRUNE_MANIFEST.json present.",
+      );
+    } else {
+      console.log(
+        "⚠ Skipping Agents 4A/4B execution — --execute not set.",
+      );
+      console.log(
+        "  The plan is persisted at .prune/PRUNE_MANIFEST.json (dry-run marker).",
+      );
+      console.log(
+        "  Re-run with --execute to apply deletions through the guardian-executor.",
+      );
+    }
     console.log("");
   }
 
@@ -181,7 +194,7 @@ export async function runCLI(options: CLIOptions): Promise<void> {
   );
 
   if (existsSync(execReportPath) && existsSync(reviewerHandoffPath)) {
-    const debrief = await runDebriefer({
+    await runDebriefer({
       executionReportPath: execReportPath,
       reviewerHandoffPath,
       cwd,
@@ -245,12 +258,14 @@ Usage: surgical-prune <target-path> [options]
 
 Options:
   -p, --prompt <text>     User prompt describing pruning intent
-  --dry-run               Simulate deletions without executing
+  --dry-run               Alias for default behavior: plan only, no deletions
+  --execute               Run Agents 4A/4B (guardian-executor + verifier) on
+                          the persisted PRUNE_MANIFEST.json. OFF by default.
   -h, --help              Show this help
 
 Examples:
   surgical-prune ./my-project --prompt "Remove dead code aggressively"
-  surgical-prune ./my-project --prompt "Clean up unused exports" --dry-run
+  surgical-prune ./my-project --prompt "Clean up unused exports" --execute
 `);
     process.exit(0);
   }
@@ -260,13 +275,14 @@ Examples:
     ? args[args.indexOf(args.find((a) => a === "-p" || a === "--prompt")!) + 1]
     : "";
   const dryRun = args.includes("--dry-run");
+  const execute = args.includes("--execute");
 
   if (!targetPath) {
     console.error("Error: target-path is required");
     process.exit(1);
   }
 
-  await runCLI({ targetPath, userPrompt, dryRun })
+  await runCLI({ targetPath, userPrompt, dryRun, execute })
     .then(() =>
       console.log(
         "\n✅ Implemented phases complete (Agents 1-2). Agents 3-7 pending — see status above.",

@@ -19,6 +19,8 @@ export interface PlannerOptions {
   reviewerHandoff: any;
   researcherHandoff: any;
   cwd?: string;
+  /** When true, the persisted PRUNE_MANIFEST.json marks safety.dry_run. */
+  dryRun?: boolean;
 }
 
 type PlanRow = {
@@ -155,6 +157,42 @@ function buildPlanData(
     reclaimableBytes,
     totalFiles: rows.length,
     rows,
+  };
+}
+
+// Server-side manifest builder: the unattended CLI mirror of the interactive
+// browser buildManifest(). Produces the PruneManifest that Executor/Verifier
+// consume. Marked as a dry-run plan until an explicit --execute authorizes it.
+function buildManifest(plan: PlanData, dryRun: boolean): PruneManifest {
+  const selected_files: SelectedFile[] = [];
+  const protected_skipped: string[] = [];
+  let bytes = 0;
+  let files = 0;
+  for (const r of plan.rows) {
+    if (r.group === "Protected") {
+      protected_skipped.push(r.path);
+      continue;
+    }
+    const action: "delete" | "keep" = r.action;
+    if (action === "delete") {
+      bytes += r.size;
+      files += 1;
+    }
+    selected_files.push({
+      path: r.path,
+      action,
+      confidence: r.confidence,
+      reason: r.reason,
+    });
+  }
+  return {
+    timestamp: new Date().toISOString(),
+    target_path: plan.target,
+    git_commit: plan.gitCommit,
+    selected_files,
+    protected_skipped,
+    estimated_reclamation: { bytes, files, ci_seconds: 0 },
+    safety: { dry_run: dryRun, stash_created: false, rollback_script: "" },
   };
 }
 
@@ -453,6 +491,16 @@ export async function runPlanner(options: PlannerOptions): Promise<string> {
 
   await mkdir(cwd, { recursive: true });
   await writeFile(absPath, html, "utf8");
+
+  // Side artifact: persist the plan as a machine-readable PRUNE_MANIFEST.json in
+  // .prune/ so the unattended CLI can apply it via the explicit --execute flag.
+  // This is the *plan*, not an authorization to delete; execution stays gated.
+  const dryRun = options?.dryRun ?? true;
+  const manifest = buildManifest(plan, dryRun);
+  const pruneDir = path.join(cwd, ".prune");
+  await mkdir(pruneDir, { recursive: true });
+  const manifestAbsPath = path.join(pruneDir, "PRUNE_MANIFEST.json");
+  await writeFile(manifestAbsPath, JSON.stringify(manifest, null, 2), "utf8");
 
   return absPath;
 }

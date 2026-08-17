@@ -152,4 +152,30 @@ describe("runPlanner", () => {
     expect(result).toContain("surgical-pruning-");
     expect(result).toContain("demo.html");
   });
+
+  it("persists a PruneManifest side artifact to .prune/PRUNE_MANIFEST.json", async () => {
+    const reviewerHandoff = makeReviewerHandoff();
+    const researcherHandoff = makeResearcherHandoff();
+
+    await runPlanner({ reviewerHandoff, researcherHandoff, cwd: tmp });
+
+    const manifestPath = join(tmp, ".prune", "PRUNE_MANIFEST.json");
+    const st = await stat(manifestPath);
+    expect(st.isFile()).toBe(true);
+
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    // Schema-shape checks (mirrors the browser buildManifest output).
+    expect(manifest).toHaveProperty("selected_files");
+    expect(manifest).toHaveProperty("protected_skipped");
+    expect(manifest).toHaveProperty("safety.dry_run");
+    expect(manifest.target_path).toBe("/tmp/demo");
+
+    // Auto-prune candidate is selected for deletion; protected file is skipped.
+    const deadEntry = manifest.selected_files.find(
+      (f: any) => f.path === "src/dead.ts",
+    );
+    expect(deadEntry?.action).toBe("delete");
+    expect(manifest.protected_skipped).toContain(".github/workflows/ci.yml");
+    expect(manifest.safety.dry_run).toBe(true);
+  });
 });
