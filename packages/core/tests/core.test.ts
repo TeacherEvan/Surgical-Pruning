@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { scanDirectory } from "../src/utils.js";
+import { scanDirectory } from "../src/index.js";
 import { FileInventoryItem, PruneManifest } from "../src/schemas.js";
 
 describe("core/schemas", () => {
@@ -60,8 +60,8 @@ describe("core/scanDirectory", () => {
     expect(sample!.language).toBe("typescript");
   });
 
-  it("cleanup", () => {
+  it("cleanup removes the temp dir", () => {
     rmSync(dir, { recursive: true, force: true });
-    expect(true).toBe(true);
+    expect(existsSync(dir)).toBe(false);
   });
 });

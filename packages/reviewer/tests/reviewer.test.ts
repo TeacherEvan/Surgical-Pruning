@@ -37,8 +37,8 @@ describe("reviewer/runReviewer", () => {
     }
   });
 
-  it("cleanup", () => {
-    rmSync(dir, { recursive: true, force: true });
-    expect(true).toBe(true);
+  it("cleanup removes the temp dir", () => {
+    rmSync(dir, { recursive: true, force: true } as any);
+    expect(existsSync(dir)).toBe(false);
   });
 });
