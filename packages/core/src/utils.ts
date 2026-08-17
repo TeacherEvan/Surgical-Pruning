@@ -2,7 +2,8 @@ import { execa } from "execa";
 import { readFile, stat } from "node:fs/promises";
 import { relative, resolve, extname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
-import { glob } from "fast-glob";
+import fg from "fast-glob";
+const { glob } = fg;
 import type { FileInventoryItem, FolderSummary } from "./schemas.js";
 
 const __filename = fileURLToPath(import.meta.url);
