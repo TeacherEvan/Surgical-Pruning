@@ -16,6 +16,8 @@ import {
 import { writeFile, mkdir } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { z } from "zod";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -91,6 +93,10 @@ export async function runReviewer(
     git_commit: gitCommit,
   };
 
+  // Optional cross-check with knip (spec-mandated tool). Runs only if a
+  // knip binary is resolvable in the target; never throws on fixtures.
+  const knipIssues = await runKnipCrossCheck(cwd);
+
   const handoff: HandoffReviewer = {
     metadata,
     tree_diagram: treeDiagram,
@@ -98,6 +104,7 @@ export async function runReviewer(
     folder_summary: folders,
     effected_systems: effectedSystems,
     constraints,
+    external_knip_issues: knipIssues,
   };
 
   // Write output
@@ -153,27 +160,58 @@ function detectFrameworks(
 
 function detectPackageManagers(cwd: string): string[] {
   const managers: string[] = [];
-  const files = [
-    "pnpm-lock.yaml",
-    "yarn.lock",
-    "package-lock.json",
-    "Cargo.lock",
-    "go.mod",
-    "pyproject.toml",
-    "requirements.txt",
+  const markers: [string, string][] = [
+    ["pnpm-lock.yaml", "pnpm"],
+    ["yarn.lock", "yarn"],
+    ["package-lock.json", "npm"],
+    ["Cargo.lock", "cargo"],
+    ["go.mod", "go"],
+    ["pyproject.toml", "pip"],
+    ["requirements.txt", "pip"],
   ];
-
-  for (const file of files) {
-    try {
-      // This is a sync check - in real implementation use fs.existsSync
-      // For now, we'll just check common ones
-      if (file === "pnpm-lock.yaml") managers.push("pnpm");
-      if (file === "yarn.lock") managers.push("yarn");
-      if (file === "package-lock.json") managers.push("npm");
-    } catch {}
+  for (const [file, name] of markers) {
+    if (existsSync(join(cwd, file))) managers.push(name);
   }
-
   return managers.length > 0 ? managers : ["npm"];
+}
+
+/**
+ * Optional knip cross-check (spec-mandated tool). Returns issue identifiers
+ * when knip is installed and the target is a JS/TS project; otherwise returns
+ * an empty array. Never throws — a missing/unparseable knip run degrades to [].
+ */
+async function runKnipCrossCheck(cwd: string): Promise<string[]> {
+  // Only run knip if a local binary is present (no network/npx resolution).
+  const localBin = join(cwd, "node_modules", ".bin", "knip");
+  if (!existsSync(localBin)) return [];
+  try {
+    const out = execFileSync(localBin, ["--reporter=json"], {
+      cwd,
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 60000,
+    }).toString();
+    return parseKnipIssues(out);
+  } catch (err) {
+    // knip exits non-zero when it FINDS issues — its normal job — so its
+    // findings land on stdout even though execFileSync throws. Recover them
+    // instead of swallowing every real detection.
+    const out = (err as { stdout?: Buffer | string })?.stdout;
+    if (out) return parseKnipIssues(out.toString());
+    return [];
+  }
+}
+
+function parseKnipIssues(out: string): string[] {
+  try {
+    const parsed = JSON.parse(out) as {
+      issues?: Array<{ type?: string; symbol?: string; file?: string }>;
+    };
+    return (parsed.issues ?? []).map(
+      (i) => `${i.type ?? "issue"}:${i.symbol ?? ""}:${i.file ?? ""}`,
+    );
+  } catch {
+    return [];
+  }
 }
 
 // CLI entry point
