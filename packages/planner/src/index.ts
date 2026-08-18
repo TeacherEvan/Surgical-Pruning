@@ -70,7 +70,11 @@ function isProtectedPath(filePath: string): boolean {
       );
       return re.test(normalized) || re.test(base);
     }
-    return normalized === pattern || base === pattern || normalized.endsWith("/" + pattern);
+    return (
+      normalized === pattern ||
+      base === pattern ||
+      normalized.endsWith("/" + pattern)
+    );
   });
 }
 
@@ -85,18 +89,19 @@ function buildSignal(item: FileInventoryItem): string {
   return parts.length ? parts.join(", ") : "no signals";
 }
 
-function buildReason(
-  group: PlanRow["group"],
-  confidence: number,
-): string {
+function buildReason(group: PlanRow["group"], confidence: number): string {
   const pct = Math.round(confidence * 100);
   if (group === "Protected") return "Protected path — never pruned";
-  if (group === "Auto-prune") return `High-confidence dead code (${pct}% confidence)`;
+  if (group === "Auto-prune")
+    return `High-confidence dead code (${pct}% confidence)`;
   if (group === "Review") return `Needs manual review (${pct}% confidence)`;
   return `Low confidence (${pct}%) — manual only`;
 }
 
-function classify(confidence: number, protectedPath: boolean): PlanRow["group"] {
+function classify(
+  confidence: number,
+  protectedPath: boolean,
+): PlanRow["group"] {
   if (protectedPath) return "Protected";
   if (confidence >= CONFIDENCE_THRESHOLDS.AUTO_PRUNE) return "Auto-prune";
   if (confidence >= CONFIDENCE_THRESHOLDS.REVIEW_REQUIRED) return "Review";
@@ -107,14 +112,9 @@ function groupClass(g: string): string {
   return g.toLowerCase().replace(/[^a-z]/g, "");
 }
 
-function buildPlanData(
-  reviewerHandoff: any,
-  researcherHandoff: any,
-): PlanData {
-  const target =
-    reviewerHandoff?.metadata?.target_path ?? "target";
-  const gitCommit =
-    reviewerHandoff?.metadata?.git_commit ?? "unknown";
+function buildPlanData(reviewerHandoff: any, researcherHandoff: any): PlanData {
+  const target = reviewerHandoff?.metadata?.target_path ?? "target";
+  const gitCommit = reviewerHandoff?.metadata?.git_commit ?? "unknown";
   const aggressiveness =
     researcherHandoff?.user_prompt_analysis?.aggressiveness ?? "moderate";
 

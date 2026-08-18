@@ -23,8 +23,11 @@ function safeParse<T>(raw: string, fallback: T): T {
 export async function runResearcherV2(
   options: ResearcherV2Options,
 ): Promise<ResearcherV2Output> {
-  const { auditReportPath, researcherHandoffPath, cwd = process.cwd() } =
-    options;
+  const {
+    auditReportPath,
+    researcherHandoffPath,
+    cwd = process.cwd(),
+  } = options;
 
   const auditRaw = await readFile(auditReportPath, "utf-8").catch(() => "{}");
   const resRaw = await readFile(researcherHandoffPath, "utf-8").catch(
@@ -36,9 +39,7 @@ export async function runResearcherV2(
   const smells: any[] = Array.isArray(audit?.architectural_smells)
     ? audit.architectural_smells
     : [];
-  const orphans: string[] = Array.isArray(
-    audit?.dependency_health?.orphans,
-  )
+  const orphans: string[] = Array.isArray(audit?.dependency_health?.orphans)
     ? audit.dependency_health.orphans
     : [];
 
@@ -93,7 +94,8 @@ export async function runResearcherV2(
     priority: "MEDIUM",
     category: "ci",
     title: "Add husky pre-commit guard",
-    finding: "No pre-commit hook guards against accidental commits of dead/large files.",
+    finding:
+      "No pre-commit hook guards against accidental commits of dead/large files.",
     action: "pnpm add -D husky && husky init",
     source: "https://typicode.github.io/husky/",
     effort: "S",
@@ -106,8 +108,7 @@ export async function runResearcherV2(
     category: "performance",
     title: "Set a bundle size budget",
     finding: "No enforced size budget for the build output.",
-    action:
-      "Configure a size-limit check in CI to fail on unexpected growth.",
+    action: "Configure a size-limit check in CI to fail on unexpected growth.",
     source: "https://nextjs.org/docs/app/building-your-application/optimizing",
     effort: "M",
     impact: "Prevents silent bundle bloat.",

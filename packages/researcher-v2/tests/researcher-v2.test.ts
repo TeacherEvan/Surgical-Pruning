@@ -8,7 +8,10 @@ import { ResearcherV2Output } from "@surgical-pruning/core";
 let tmp: string;
 
 beforeEach(async () => {
-  tmp = join(tmpdir(), `sp-rv2-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  tmp = join(
+    tmpdir(),
+    `sp-rv2-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   await mkdir(tmp, { recursive: true });
 });
 
@@ -21,11 +24,24 @@ describe("runResearcherV2 (Agent 7)", () => {
     const audit = {
       timestamp: new Date().toISOString(),
       git_commit: "abc1234",
-      dependency_health: { orphans: ["src/old.ts"], circular: [], duplicates: [] },
+      dependency_health: {
+        orphans: ["src/old.ts"],
+        circular: [],
+        duplicates: [],
+      },
       architectural_smells: [
-        { file: "src/big.ts", type: "god_module", severity: "medium", metric: 900 },
+        {
+          file: "src/big.ts",
+          type: "god_module",
+          severity: "medium",
+          metric: 900,
+        },
       ],
-      coverage_delta: { lines_removed: 0, covered_lines_lost: 0, pct_change: 0 },
+      coverage_delta: {
+        lines_removed: 0,
+        covered_lines_lost: 0,
+        pct_change: 0,
+      },
       build_performance: {
         bundle_size_kb_before: 0,
         bundle_size_kb_after: 0,
@@ -44,7 +60,11 @@ describe("runResearcherV2 (Agent 7)", () => {
       language_specific_practices: {},
       general_practices: [],
       tool_recommendations: [],
-      future_proofing: { ci_integration: "", precommit_hook: "", dependency_budget: "" },
+      future_proofing: {
+        ci_integration: "",
+        precommit_hook: "",
+        dependency_budget: "",
+      },
     };
     const auditPath = join(tmp, "audit-report.json");
     const resPath = join(tmp, "handoff-researcher.json");
@@ -69,6 +89,8 @@ describe("runResearcherV2 (Agent 7)", () => {
     expect(new Set(ids).size).toBe(ids.length); // unique
 
     expect(() => ResearcherV2Output.parse(r)).not.toThrow();
-    await expect(stat(join(tmp, ".prune", "suggestions.json"))).resolves.toBeDefined();
+    await expect(
+      stat(join(tmp, ".prune", "suggestions.json")),
+    ).resolves.toBeDefined();
   });
 });

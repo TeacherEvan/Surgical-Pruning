@@ -51,11 +51,17 @@ export function isProtectedPath(p: string): boolean {
   const base = path.split("/").pop() ?? path;
   for (const pattern of PROTECTED) {
     if (pattern.endsWith("/")) {
-      if (path === pattern.slice(0, -1) || path.startsWith(pattern) || path.includes("/" + pattern)) {
+      if (
+        path === pattern.slice(0, -1) ||
+        path.startsWith(pattern) ||
+        path.includes("/" + pattern)
+      ) {
         return true;
       }
     } else if (pattern.includes("*")) {
-      const re = new RegExp("^" + pattern.split("*").map(escapeRegExp).join(".*") + "$");
+      const re = new RegExp(
+        "^" + pattern.split("*").map(escapeRegExp).join(".*") + "$",
+      );
       if (re.test(path) || re.test(base)) return true;
     } else if (path === pattern || base === pattern) {
       return true;
@@ -80,7 +86,9 @@ async function loadManifest(manifestPath: string): Promise<any> {
 }
 
 /** Read an execution log; tolerate non-JSON (treat as raw text). */
-async function loadExecutionLog(executionLogPath: string): Promise<{ exists: boolean; json: ExecutionReport | null; raw: string }> {
+async function loadExecutionLog(
+  executionLogPath: string,
+): Promise<{ exists: boolean; json: ExecutionReport | null; raw: string }> {
   let raw: string;
   try {
     raw = await readFile(executionLogPath, "utf8");
@@ -117,7 +125,9 @@ function porcelainPath(line: string): string {
 }
 
 /** Detect the build command for a working directory. */
-async function detectBuildCommand(cwd: string): Promise<{ cmd: string[]; label: string } | null> {
+async function detectBuildCommand(
+  cwd: string,
+): Promise<{ cmd: string[]; label: string } | null> {
   try {
     await stat(join(cwd, "pnpm-lock.yaml"));
     return { cmd: ["pnpm", "build"], label: "pnpm build" };
@@ -136,7 +146,9 @@ async function detectBuildCommand(cwd: string): Promise<{ cmd: string[]; label: 
   return null;
 }
 
-export async function runVerifier(options: VerifierOptions): Promise<VerificationReport> {
+export async function runVerifier(
+  options: VerifierOptions,
+): Promise<VerificationReport> {
   const cwd = resolve(options.cwd ?? process.cwd());
   const checks: VerificationCheck[] = [];
   const violations: string[] = [];
@@ -155,7 +167,9 @@ export async function runVerifier(options: VerifierOptions): Promise<Verificatio
 
   // b) no_protected_files_targeted
   let protectedOk = true;
-  const selected: unknown[] = Array.isArray(manifest?.selected_files) ? manifest.selected_files : [];
+  const selected: unknown[] = Array.isArray(manifest?.selected_files)
+    ? manifest.selected_files
+    : [];
   for (const entry of selected) {
     if (
       entry &&
@@ -173,13 +187,19 @@ export async function runVerifier(options: VerifierOptions): Promise<Verificatio
   checks.push({
     name: "no_protected_files_targeted",
     passed: protectedOk,
-    details: protectedOk ? "no protected paths targeted for deletion" : violations.join("; "),
+    details: protectedOk
+      ? "no protected paths targeted for deletion"
+      : violations.join("; "),
   });
 
   // c) git_status_clean
   const porcelain = gitPorcelain(cwd);
   if (porcelain === null) {
-    checks.push({ name: "git_status_clean", passed: true, details: "not a git repo / skipped" });
+    checks.push({
+      name: "git_status_clean",
+      passed: true,
+      details: "not a git repo / skipped",
+    });
   } else {
     let gitOk = true;
     for (const line of porcelain.split("\n")) {
@@ -187,20 +207,28 @@ export async function runVerifier(options: VerifierOptions): Promise<Verificatio
       const p = porcelainPath(line);
       if (p && isProtectedPath(p)) {
         gitOk = false;
-        violations.push(`Protected path changed in git status: ${p} (${line.slice(0, 2).trim()})`);
+        violations.push(
+          `Protected path changed in git status: ${p} (${line.slice(0, 2).trim()})`,
+        );
       }
     }
     checks.push({
       name: "git_status_clean",
       passed: gitOk,
-      details: gitOk ? "no protected-path changes in git status" : violations.join("; "),
+      details: gitOk
+        ? "no protected-path changes in git status"
+        : violations.join("; "),
     });
   }
 
   // d) build_passes
   const buildCmd = await detectBuildCommand(cwd);
   if (!buildCmd) {
-    checks.push({ name: "build_passes", passed: true, details: "no build cmd" });
+    checks.push({
+      name: "build_passes",
+      passed: true,
+      details: "no build cmd",
+    });
   } else {
     let buildOk = true;
     let buildDetails = buildCmd.label;
@@ -215,7 +243,11 @@ export async function runVerifier(options: VerifierOptions): Promise<Verificatio
       const status = typeof err?.status === "number" ? err.status : "error";
       buildDetails = `${buildCmd.label} exited ${status}`;
     }
-    checks.push({ name: "build_passes", passed: buildOk, details: buildDetails });
+    checks.push({
+      name: "build_passes",
+      passed: buildOk,
+      details: buildDetails,
+    });
   }
 
   // e) execution_log_present
@@ -258,6 +290,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         process.exit(2);
       });
   } else {
-    console.log("[GUARDIAN-VERIFIER] usage: node index.js <manifest> <execution-log>");
+    console.log(
+      "[GUARDIAN-VERIFIER] usage: node index.js <manifest> <execution-log>",
+    );
   }
 }

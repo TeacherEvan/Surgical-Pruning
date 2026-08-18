@@ -69,7 +69,11 @@ describe("integration: reviewer → planner → executor(dry-run)", () => {
         language_specific_practices: {},
         general_practices: [],
         tool_recommendations: [],
-        future_proofing: { ci_integration: "", precommit_hook: "", dependency_budget: "" },
+        future_proofing: {
+          ci_integration: "",
+          precommit_hook: "",
+          dependency_budget: "",
+        },
       },
       cwd: dir,
     });
@@ -82,8 +86,18 @@ describe("integration: reviewer → planner → executor(dry-run)", () => {
     manifest.safety.dry_run = true;
     manifest.git_commit = head;
     manifest.selected_files = [
-      { path: "dead-export.ts", action: "delete", confidence: 0.99, reason: "unused export" },
-      { path: "secret.pem", action: "delete", confidence: 0.5, reason: "should be protected" },
+      {
+        path: "dead-export.ts",
+        action: "delete",
+        confidence: 0.99,
+        reason: "unused export",
+      },
+      {
+        path: "secret.pem",
+        action: "delete",
+        confidence: 0.5,
+        reason: "should be protected",
+      },
     ];
     writeFileSync(manifestPath, JSON.stringify(manifest));
 
@@ -95,8 +109,8 @@ describe("integration: reviewer → planner → executor(dry-run)", () => {
     expect(existsSync(join(dir, "dead-export.ts"))).toBe(true);
     expect(existsSync(join(dir, "secret.pem"))).toBe(true);
     // Protected file must be in the skip reasons.
-    expect(
-      report.skipped_reasons.some((r) => /secret\.pem/.test(r)),
-    ).toBe(true);
+    expect(report.skipped_reasons.some((r) => /secret\.pem/.test(r))).toBe(
+      true,
+    );
   });
 });

@@ -60,7 +60,12 @@ describe("GUARDIAN-VERIFIER (Agent 4B)", () => {
       git_commit: "abc1234",
       selected_files: [
         { path: "old.ts", action: "delete", confidence: 0.9, reason: "x" },
-        { path: "secret.pem", action: "delete", confidence: 0.5, reason: "should be protected" },
+        {
+          path: "secret.pem",
+          action: "delete",
+          confidence: 0.5,
+          reason: "should be protected",
+        },
       ],
       protected_skipped: [],
       estimated_reclamation: { bytes: 0, files: 0, ci_seconds: 0 },
@@ -68,7 +73,11 @@ describe("GUARDIAN-VERIFIER (Agent 4B)", () => {
     };
 
     await writeFile(manifestPath, JSON.stringify(manifest), "utf8");
-    await writeFile(executionLogPath, JSON.stringify(MINIMAL_EXEC_REPORT), "utf8");
+    await writeFile(
+      executionLogPath,
+      JSON.stringify(MINIMAL_EXEC_REPORT),
+      "utf8",
+    );
 
     const r = await runVerifier({ manifestPath, executionLogPath, cwd: tmp });
 
@@ -84,8 +93,11 @@ describe("GUARDIAN-VERIFIER (Agent 4B)", () => {
     await writeFile(join(tmp, "old.ts"), "export const y = 2;\n");
     await writeFile(
       join(tmp, "package.json"),
-      JSON.stringify({ name: "tmp", scripts: { build: 'node -e "process.exit(0)"' } }),
-      "utf8"
+      JSON.stringify({
+        name: "tmp",
+        scripts: { build: 'node -e "process.exit(0)"' },
+      }),
+      "utf8",
     );
 
     const manifestPath = join(tmp, "prune-manifest.json");
@@ -95,7 +107,9 @@ describe("GUARDIAN-VERIFIER (Agent 4B)", () => {
       timestamp: new Date().toISOString(),
       target_path: tmp,
       git_commit: "abc1234",
-      selected_files: [{ path: "old.ts", action: "delete", confidence: 0.9, reason: "x" }],
+      selected_files: [
+        { path: "old.ts", action: "delete", confidence: 0.9, reason: "x" },
+      ],
       protected_skipped: [],
       estimated_reclamation: { bytes: 0, files: 0, ci_seconds: 0 },
       safety: { dry_run: false, stash_created: false, rollback_script: "" },

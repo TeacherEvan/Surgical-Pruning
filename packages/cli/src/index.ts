@@ -1,7 +1,4 @@
-import {
-  HandoffReviewer,
-  HandoffResearcher,
-} from "@surgical-pruning/core";
+import { HandoffReviewer, HandoffResearcher } from "@surgical-pruning/core";
 import { runReviewer } from "@surgical-pruning/reviewer";
 import { runResearcher } from "@surgical-pruning/researcher";
 import { runPlanner } from "@surgical-pruning/planner";
@@ -50,7 +47,9 @@ export async function runCLI(options: CLIOptions): Promise<void> {
   console.log(`Target: ${absTarget}`);
   console.log(`Prompt: ${userPrompt || "(none)"}`);
   console.log(`Dry Run: ${dryRun ? "YES" : "NO"}`);
-  console.log(`Execute deletions (Agent 4A/4B): ${execute ? "YES (explicit)" : "NO (plan only)"}`);
+  console.log(
+    `Execute deletions (Agent 4A/4B): ${execute ? "YES (explicit)" : "NO (plan only)"}`,
+  );
   console.log("");
 
   // Ensure .prune directory exists
@@ -158,13 +157,9 @@ export async function runCLI(options: CLIOptions): Promise<void> {
     console.log("");
   } else {
     if (!existsSync(manifestPath)) {
-      console.log(
-        "⚠ Skipping Agents 4A/4B — no PRUNE_MANIFEST.json present.",
-      );
+      console.log("⚠ Skipping Agents 4A/4B — no PRUNE_MANIFEST.json present.");
     } else {
-      console.log(
-        "⚠ Skipping Agents 4A/4B execution — --execute not set.",
-      );
+      console.log("⚠ Skipping Agents 4A/4B execution — --execute not set.");
       console.log(
         "  The plan is persisted at .prune/PRUNE_MANIFEST.json (dry-run marker).",
       );
@@ -223,7 +218,9 @@ export async function runCLI(options: CLIOptions): Promise<void> {
       researcherHandoffPath,
       cwd,
     });
-    console.log(`Researcher v2: ${suggestions.suggestions.length} suggestions.`);
+    console.log(
+      `Researcher v2: ${suggestions.suggestions.length} suggestions.`,
+    );
   } else {
     console.log("Researcher v2: skipped (no audit report yet).");
   }
@@ -235,9 +232,15 @@ export async function runCLI(options: CLIOptions): Promise<void> {
   console.log("PIPELINE STATUS — ALL 7 AGENTS IMPLEMENTED");
   console.log("  ✅ PRUNE-REVIEWER  (Agent 1): implemented & run");
   console.log("  ✅ PRUNE-RESEARCHER (Agent 2): implemented & run");
-  console.log("  ✅ PRUNING-PLANNER (Agent 3): implemented & run (HTML generated)");
-  console.log("  ✅ GUARDIAN-EXECUTOR (Agent 4A): implemented (runs if manifest present)");
-  console.log("  ✅ GUARDIAN-VERIFIER (Agent 4B): implemented (runs if manifest present)");
+  console.log(
+    "  ✅ PRUNING-PLANNER (Agent 3): implemented & run (HTML generated)",
+  );
+  console.log(
+    "  ✅ GUARDIAN-EXECUTOR (Agent 4A): implemented (runs if manifest present)",
+  );
+  console.log(
+    "  ✅ GUARDIAN-VERIFIER (Agent 4B): implemented (runs if manifest present)",
+  );
   console.log("  ✅ DEBRIEFER (Agent 5): implemented");
   console.log("  ✅ CODEBASE-AUDITOR (Agent 6): implemented");
   console.log("  ✅ RESEARCHER v2 (Agent 7): implemented");

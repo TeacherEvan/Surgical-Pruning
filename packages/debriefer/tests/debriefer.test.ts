@@ -7,7 +7,10 @@ import { tmpdir } from "node:os";
 let tmp: string;
 
 beforeEach(async () => {
-  tmp = join(tmpdir(), `sp-debriefer-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  tmp = join(
+    tmpdir(),
+    `sp-debriefer-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   await mkdir(tmp, { recursive: true });
 });
 

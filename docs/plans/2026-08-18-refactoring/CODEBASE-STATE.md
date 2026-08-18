@@ -5,6 +5,7 @@
 No other uncommitted changes.
 
 ## Tech Stack
+
 - pnpm workspace monorepo, Turborepo orchestration, TypeScript (NodeNext ESM).
 - 9 packages: `core`, `reviewer`, `researcher`, `planner`, `executor`,
   `verifier`, `debriefer`, `auditor`, `researcher-v2`, plus `cli`.
@@ -12,6 +13,7 @@ No other uncommitted changes.
   test→build) + `spec-validation.yml`.
 
 ## Relevant Structure (src line counts)
+
 - `core/src/utils.ts` — **583 lines** of git + scan + tree + effects. THE
   dead-code engine lives here.
 - `core/src/schemas.ts` — Zod schemas (HandoffReviewer, ExecutionReport, etc.).
@@ -22,6 +24,7 @@ No other uncommitted changes.
   auditor 92, researcher-v2 131.
 
 ## Known Issues (evidence)
+
 1. **Fake dead-code engine.** `core/src/utils.ts:343` sets
    `imported_by: []` with comment "Will be populated in second pass" — no
    second pass exists. `detectDeadCodeSignals` (`:415`) therefore sees
@@ -48,18 +51,21 @@ No other uncommitted changes.
    manifest's files.
 
 ## Test Baseline (to confirm in VERIFY)
+
 - 10 packages, 71 `expect()` calls total. Hollow-test grep pending (OBJ-007).
 - Prior run (Aug 18 debrief) reported all 4 gates green on the merged tree.
 
 ## Dependencies (no secret values present)
+
 - Root devDeps: turbo, typescript, typescript-eslint, prettier, husky, eslint.
 - `pnpm-lock.yaml` is gitignored per repo policy (confirm during execution).
 
 ## Initial Risks
+
 - R-A: Splitting `core/utils.ts` could break agent imports — mitigate with
   build gate after each module move.
 - R-B: Real dead-code detection (knip/depcheck) may surface many false
-  positives on this repo itself — scope the integration to the *target* being
+  positives on this repo itself — scope the integration to the _target_ being
   scanned, not the tool repo.
 - R-C: Executor safety fixes are HIGH-risk (destructive path) — require
   `APPROVAL_REQUIRED`-equivalent care; gate behind fixture tests first.

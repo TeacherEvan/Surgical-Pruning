@@ -28,11 +28,12 @@ function fmtBytes(bytes: number): string {
   return `${bytes} B`;
 }
 
-export async function runDebriefer(
-  options: DebrieferOptions,
-): Promise<string> {
-  const { executionReportPath, reviewerHandoffPath, cwd = process.cwd() } =
-    options;
+export async function runDebriefer(options: DebrieferOptions): Promise<string> {
+  const {
+    executionReportPath,
+    reviewerHandoffPath,
+    cwd = process.cwd(),
+  } = options;
 
   const { readFile, writeFile, mkdir } = await import("node:fs/promises");
   const { join } = await import("node:path");

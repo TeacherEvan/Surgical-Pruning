@@ -8,7 +8,10 @@ import { AuditReport } from "@surgical-pruning/core";
 let tmp: string;
 
 beforeEach(async () => {
-  tmp = join(tmpdir(), `sp-aud-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  tmp = join(
+    tmpdir(),
+    `sp-aud-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   await mkdir(tmp, { recursive: true });
 });
 
@@ -110,6 +113,8 @@ describe("runAuditor (Agent 6)", () => {
     // re-validate against schema
     expect(() => AuditReport.parse(r)).not.toThrow();
 
-    await expect(stat(join(tmp, ".prune", "audit-report.json"))).resolves.toBeDefined();
+    await expect(
+      stat(join(tmp, ".prune", "audit-report.json")),
+    ).resolves.toBeDefined();
   });
 });

@@ -6,16 +6,16 @@ to correctness/safety/maintainability.
 
 ## Areas Being Edited
 
-| Area | File(s) | Change | Risk |
-|------|---------|--------|------|
-| Dead-code engine | `packages/core/src/utils.ts` | Add reverse-import second pass; populate `imported_by`; optional knip/depcheck hook | Med |
-| Core structure | `packages/core/src/{git,scan,tree,effects}.ts` | Split 583-line monolith; re-export from `index.ts` | Med |
-| Effect estimate | `packages/core/src/effects.ts` | Replace magic multipliers with measured/flagged output | Low |
-| Reviewer tools | `packages/reviewer/src/index.ts`, `package.json` | Invoke knip/depcheck OR drop deps | Low |
-| Executor safety | `packages/executor/src/index.ts` | Abort on git_commit mismatch; fix stash arg; scope commit to manifest files | High |
-| CLI honesty | `packages/cli/src/index.ts` | Remove contradictory trailing status message | Low |
-| Tests | `packages/**/tests/*`, new `tests/integration` | Hollow-test purge + dry-run fixture test | Low |
-| Docs | `IMPLEMENTATION_PLAN.md`, `docs/.archive/*` | Archive stale debrief; update deliverables | Low |
+| Area             | File(s)                                          | Change                                                                              | Risk |
+| ---------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------- | ---- |
+| Dead-code engine | `packages/core/src/utils.ts`                     | Add reverse-import second pass; populate `imported_by`; optional knip/depcheck hook | Med  |
+| Core structure   | `packages/core/src/{git,scan,tree,effects}.ts`   | Split 583-line monolith; re-export from `index.ts`                                  | Med  |
+| Effect estimate  | `packages/core/src/effects.ts`                   | Replace magic multipliers with measured/flagged output                              | Low  |
+| Reviewer tools   | `packages/reviewer/src/index.ts`, `package.json` | Invoke knip/depcheck OR drop deps                                                   | Low  |
+| Executor safety  | `packages/executor/src/index.ts`                 | Abort on git_commit mismatch; fix stash arg; scope commit to manifest files         | High |
+| CLI honesty      | `packages/cli/src/index.ts`                      | Remove contradictory trailing status message                                        | Low  |
+| Tests            | `packages/**/tests/*`, new `tests/integration`   | Hollow-test purge + dry-run fixture test                                            | Low  |
+| Docs             | `IMPLEMENTATION_PLAN.md`, `docs/.archive/*`      | Archive stale debrief; update deliverables                                          | Low  |
 
 ## Current → Target Data Flow
 
@@ -46,12 +46,14 @@ AFTER:   load manifest → verify sha256 + git_commit == HEAD
 ```
 
 ## Security Boundaries (preserved)
+
 - No deletion without a verified `PRUNE_MANIFEST.json`.
 - Protected paths (`PROTECTED_PATHS` from `core`) never touched.
 - Dry-run remains default-safe; executor only mutates when manifest present +
   git_commit matches + not dry-run.
 
 ## AC Mapping
+
 - AC-002/AC-003 ← dead-code engine + reviewer tools.
 - AC-004 ← effects module.
 - AC-005/AC-006 ← executor safety.

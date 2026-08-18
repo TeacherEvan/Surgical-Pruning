@@ -1,20 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { runExecutor } from "../src/index.js";
 import { execSync } from "node:child_process";
-import {
-  writeFile,
-  mkdir,
-  rm,
-  stat,
-  readFile,
-} from "node:fs/promises";
+import { writeFile, mkdir, rm, stat, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 let tmp: string;
 
 async function makeTempGitRepo(): Promise<string> {
-  const dir = join(tmpdir(), `sp-exec-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const dir = join(
+    tmpdir(),
+    `sp-exec-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   await mkdir(dir, { recursive: true });
   execSync("git init -q", { cwd: dir });
   execSync("git config user.email t@t.com", { cwd: dir });
@@ -43,8 +40,18 @@ describe("runExecutor (Agent 4A)", () => {
         .toString()
         .trim(),
       selected_files: [
-        { path: "dead.ts", action: "delete", confidence: 0.99, reason: "unused export" },
-        { path: "package-lock.json", action: "delete", confidence: 0.5, reason: "should be protected" },
+        {
+          path: "dead.ts",
+          action: "delete",
+          confidence: 0.99,
+          reason: "unused export",
+        },
+        {
+          path: "package-lock.json",
+          action: "delete",
+          confidence: 0.5,
+          reason: "should be protected",
+        },
       ],
       protected_skipped: [],
       estimated_reclamation: { bytes: 0, files: 0, ci_seconds: 0 },
@@ -83,7 +90,12 @@ describe("runExecutor (Agent 4A)", () => {
         .toString()
         .trim(),
       selected_files: [
-        { path: "dead.ts", action: "delete", confidence: 0.99, reason: "unused" },
+        {
+          path: "dead.ts",
+          action: "delete",
+          confidence: 0.99,
+          reason: "unused",
+        },
       ],
       protected_skipped: [],
       estimated_reclamation: { bytes: 0, files: 0, ci_seconds: 0 },
@@ -111,7 +123,12 @@ describe("runExecutor (Agent 4A)", () => {
       target_path: tmp,
       git_commit: "deadbeef", // deliberately wrong vs HEAD
       selected_files: [
-        { path: "dead.ts", action: "delete", confidence: 0.99, reason: "unused" },
+        {
+          path: "dead.ts",
+          action: "delete",
+          confidence: 0.99,
+          reason: "unused",
+        },
       ],
       protected_skipped: [],
       estimated_reclamation: { bytes: 0, files: 0, ci_seconds: 0 },
@@ -124,9 +141,9 @@ describe("runExecutor (Agent 4A)", () => {
 
     expect(report.files_deleted).toBe(0); // aborted
     expect(report.verification.passed).toBe(false);
-    expect(
-      report.skipped_reasons.some((r) => /commit mismatch/i.test(r)),
-    ).toBe(true);
+    expect(report.skipped_reasons.some((r) => /commit mismatch/i.test(r))).toBe(
+      true,
+    );
     // dead.ts must still exist (abort means no deletion)
     await expect(stat(join(tmp, "dead.ts"))).resolves.toBeDefined();
   });

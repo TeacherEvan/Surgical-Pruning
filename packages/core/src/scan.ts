@@ -72,7 +72,8 @@ export async function scanDirectory(options: ScanOptions): Promise<{
         folder.newest_doc = item.last_modified;
       if (item.dead_code_signals.confidence >= 0.7)
         folder.dead_code_candidates++;
-      if (isProtectedFile(item.path, exclusionPatterns)) folder.protected_files++;
+      if (isProtectedFile(item.path, exclusionPatterns))
+        folder.protected_files++;
     } catch (err) {
       console.warn(`Failed to analyze ${file}:`, err);
     }
@@ -193,8 +194,7 @@ async function analyzeDependencies(
   const relPath = relative(targetRoot, filePath);
 
   if (["typescript", "javascript"].includes(language)) {
-    const importRegex =
-      /^\s*import\s+(?:.*?\s+from\s+)?['"]([^'"]+)['"]/gm;
+    const importRegex = /^\s*import\s+(?:.*?\s+from\s+)?['"]([^'"]+)['"]/gm;
     let match: RegExpExecArray | null;
     while ((match = importRegex.exec(content)) !== null) {
       if (match[1]) imports.push(match[1]);
@@ -225,8 +225,12 @@ async function analyzeDependencies(
     }
   }
 
-  const internalImports = imports.filter((i) => i.startsWith(".") || i.startsWith("/"));
-  const externalImports = imports.filter((i) => !i.startsWith(".") && !i.startsWith("/"));
+  const internalImports = imports.filter(
+    (i) => i.startsWith(".") || i.startsWith("/"),
+  );
+  const externalImports = imports.filter(
+    (i) => !i.startsWith(".") && !i.startsWith("/"),
+  );
 
   const isEntryPoint = isEntryPointFile(filePath, language);
   const isTest = isTestFile(filePath, language);
@@ -270,7 +274,11 @@ function buildImportedBy(files: FileInventoryItem[]): void {
       const spec = raw.slice("internal:".length);
       const resolved = resolveImportSpec(spec, dir);
       const target = byResolved.get(resolved);
-      if (target && target.path !== f.path && target.path !== f.path + "/index") {
+      if (
+        target &&
+        target.path !== f.path &&
+        target.path !== f.path + "/index"
+      ) {
         if (!target.dependency_graph.imported_by.includes(f.path)) {
           target.dependency_graph.imported_by.push(f.path);
         }
@@ -286,7 +294,9 @@ function normalizeModuleName(p: string): string {
 function resolveImportSpec(spec: string, fromDir: string): string {
   const cleaned = spec.replace(/\.(ts|tsx|js|jsx|mjs|cjs|json)$/i, "");
   if (cleaned.startsWith(".")) {
-    const parts = (fromDir ? fromDir.split("/") : []).concat(cleaned.split("/"));
+    const parts = (fromDir ? fromDir.split("/") : []).concat(
+      cleaned.split("/"),
+    );
     const stack: string[] = [];
     for (const part of parts) {
       if (part === "." || part === "") continue;

@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, rm, mkdir, writeFile, readFile, stat } from "node:fs/promises";
+import {
+  mkdtemp,
+  rm,
+  mkdir,
+  writeFile,
+  readFile,
+  stat,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runPlanner } from "../src/index.js";
@@ -118,7 +125,11 @@ describe("runPlanner", () => {
     const reviewerHandoff = makeReviewerHandoff();
     const researcherHandoff = makeResearcherHandoff();
 
-    const out = await runPlanner({ reviewerHandoff, researcherHandoff, cwd: tmp });
+    const out = await runPlanner({
+      reviewerHandoff,
+      researcherHandoff,
+      cwd: tmp,
+    });
 
     expect(typeof out).toBe("string");
     expect(out.endsWith(".html")).toBe(true);
@@ -148,7 +159,11 @@ describe("runPlanner", () => {
   it("returns a deterministic filename derived from target_path", async () => {
     const reviewerHandoff = makeReviewerHandoff();
     const researcherHandoff = makeResearcherHandoff();
-    const result = await runPlanner({ reviewerHandoff, researcherHandoff, cwd: tmp });
+    const result = await runPlanner({
+      reviewerHandoff,
+      researcherHandoff,
+      cwd: tmp,
+    });
     expect(result).toContain("surgical-pruning-");
     expect(result).toContain("demo.html");
   });

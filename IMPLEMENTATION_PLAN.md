@@ -274,23 +274,23 @@ surgical-pruning/
 
 ## 📦 Deliverables Checklist
 
-| Deliverable                                       | Status     | Notes                        |
-| ------------------------------------------------- | ---------- | ---------------------------- |
-| Specification (`docs/SurgicalpruningConcept.txt`) | ✅ Done    | v2.0 complete                |
-| Public GitHub repo                                | ✅ Done    | TeacherEvan/Surgical-Pruning |
-| Core types/schemas package                        | ✅ Done    | Phase 1 (split into git/scan/tree/effects) |
-| PRUNE-REVIEWER implementation                     | ✅ Done    | Phase 2 (reverse-import pass + optional knip cross-check) |
-| PRUNE-RESEARCHER implementation                   | ✅ Done    | Phase 3                      |
-| PRUNING-PLANNER (HTML generator)                 | ✅ Done    | Phase 4 (persists PRUNE_MANIFEST.json side artifact) |
+| Deliverable                                       | Status     | Notes                                                                      |
+| ------------------------------------------------- | ---------- | -------------------------------------------------------------------------- |
+| Specification (`docs/SurgicalpruningConcept.txt`) | ✅ Done    | v2.0 complete                                                              |
+| Public GitHub repo                                | ✅ Done    | TeacherEvan/Surgical-Pruning                                               |
+| Core types/schemas package                        | ✅ Done    | Phase 1 (split into git/scan/tree/effects)                                 |
+| PRUNE-REVIEWER implementation                     | ✅ Done    | Phase 2 (reverse-import pass + optional knip cross-check)                  |
+| PRUNE-RESEARCHER implementation                   | ✅ Done    | Phase 3                                                                    |
+| PRUNING-PLANNER (HTML generator)                  | ✅ Done    | Phase 4 (persists PRUNE_MANIFEST.json side artifact)                       |
 | GUARDIAN-EXECUTOR                                 | ✅ Done    | Phase 5 (abort on git_commit mismatch, scoped commit, protected guardrail) |
-| GUARDIAN-VERIFIER                                 | ✅ Done    | Phase 5 (protected/build/git/log checks) |
-| DEBRIEFER                                         | ✅ Done    | Phase 6                      |
-| CODEBASE-AUDITOR                                  | ✅ Done    | Phase 6                      |
-| RESEARCHER v2                                     | ✅ Done    | Phase 6                      |
-| Unified CLI                                       | ✅ Done    | Phase 1 + 7 (orchestrates all 7 agents) |
-| Test fixtures & E2E tests                         | ✅ Done    | Phase 7 (21 tests, integration dry-run fixture) |
-| CI/CD pipeline                                    | ✅ Done    | Phase 7 (ci.yml: lint/typecheck/test/build) |
-| npm release                                       | ⏳ Pending | Phase 7 (not published)      |
+| GUARDIAN-VERIFIER                                 | ✅ Done    | Phase 5 (protected/build/git/log checks)                                   |
+| DEBRIEFER                                         | ✅ Done    | Phase 6                                                                    |
+| CODEBASE-AUDITOR                                  | ✅ Done    | Phase 6                                                                    |
+| RESEARCHER v2                                     | ✅ Done    | Phase 6                                                                    |
+| Unified CLI                                       | ✅ Done    | Phase 1 + 7 (orchestrates all 7 agents)                                    |
+| Test fixtures & E2E tests                         | ✅ Done    | Phase 7 (21 tests, integration dry-run fixture)                            |
+| CI/CD pipeline                                    | ✅ Done    | Phase 7 (ci.yml: lint/typecheck/test/build)                                |
+| npm release                                       | ⏳ Pending | Phase 7 (not published)                                                    |
 
 ---
 

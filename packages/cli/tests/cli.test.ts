@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { mkdtempSync, writeFileSync, rmSync, existsSync, readdirSync } from "node:fs";
+import {
+  mkdtempSync,
+  writeFileSync,
+  rmSync,
+  existsSync,
+  readdirSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
@@ -11,10 +17,7 @@ describe("cli/runCLI (full 7-agent pipeline)", () => {
   beforeAll(() => {
     dir = mkdtempSync(join(tmpdir(), "sp-cli-"));
     writeFileSync(join(dir, "mod.ts"), "export const x = 1;\n");
-    writeFileSync(
-      join(dir, "dead-export.ts"),
-      "export const unused = 42;\n",
-    );
+    writeFileSync(join(dir, "dead-export.ts"), "export const unused = 42;\n");
     execSync(
       "git init -q && git config user.email t@t && git config user.name t && git add -A && git commit -qm init",
       { cwd: dir },
@@ -36,9 +39,7 @@ describe("cli/runCLI (full 7-agent pipeline)", () => {
     ).resolves.toBeUndefined();
 
     // Reviewer (Agent 1) ran and wrote its handoff.
-    expect(existsSync(join(dir, ".prune", "handoff-reviewer.json"))).toBe(
-      true,
-    );
+    expect(existsSync(join(dir, ".prune", "handoff-reviewer.json"))).toBe(true);
     // Researcher (Agent 2) ran and wrote its handoff.
     expect(existsSync(join(dir, ".prune", "handoff-researcher.json"))).toBe(
       true,

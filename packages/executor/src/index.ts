@@ -18,14 +18,14 @@ export interface ExecutorOptions {
   cwd?: string;
 }
 
-function isProtected(
-  filePath: string,
-  patterns: readonly string[],
-): boolean {
+function isProtected(filePath: string, patterns: readonly string[]): boolean {
   const name = filePath.split("/").pop() ?? filePath;
   for (const pattern of patterns) {
     const rx = new RegExp(
-      `^${pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".")}$`,
+      `^${pattern
+        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+        .replace(/\*/g, ".*")
+        .replace(/\?/g, ".")}$`,
     );
     if (rx.test(filePath) || rx.test(name)) return true;
   }
@@ -81,7 +81,12 @@ export async function runExecutor(
     try {
       const out = execFileSync(
         "git",
-        ["stash", "push", "-m", `prune-checkpoint-${Date.now()}", "--include-untracked`],
+        [
+          "stash",
+          "push",
+          "-m",
+          `prune-checkpoint-${Date.now()}", "--include-untracked`,
+        ],
         { cwd },
       )
         .toString()
@@ -96,7 +101,10 @@ export async function runExecutor(
   const pruneDir = join(cwd, ".prune");
   await mkdir(pruneDir, { recursive: true });
   const rollbackPath = join(pruneDir, `rollback-${Date.now()}.sh`);
-  const rollbackLines: string[] = ["#!/usr/bin/env bash", "# Auto-generated rollback script"];
+  const rollbackLines: string[] = [
+    "#!/usr/bin/env bash",
+    "# Auto-generated rollback script",
+  ];
 
   let filesProcessed = 0;
   let filesDeleted = 0;
@@ -115,34 +123,61 @@ export async function runExecutor(
 
     if (item?.action !== "delete") {
       filesSkipped++;
-      fileResults.push({ file: relPath, action: "skipped", reason: "kept", bytes: 0 });
+      fileResults.push({
+        file: relPath,
+        action: "skipped",
+        reason: "kept",
+        bytes: 0,
+      });
       continue;
     }
     if (isProtected(relPath, PROTECTED_PATHS)) {
       filesSkipped++;
       skippedReasons.push(`protected path skipped: ${relPath}`);
-      fileResults.push({ file: relPath, action: "skipped", reason: "protected", bytes: 0 });
+      fileResults.push({
+        file: relPath,
+        action: "skipped",
+        reason: "protected",
+        bytes: 0,
+      });
       continue;
     }
     // Safety gate (AC-005): never delete when the manifest's git_commit does
     // not match HEAD (and this is not a dry run). Abort this deletion.
     if (!dryRun && !commitMatch) {
       filesSkipped++;
-      skippedReasons.push(`git commit mismatch (expected ${manifest?.git_commit}, got ${headShort}): ${relPath}`);
-      fileResults.push({ file: relPath, action: "skipped", reason: "commit_mismatch", bytes: 0 });
+      skippedReasons.push(
+        `git commit mismatch (expected ${manifest?.git_commit}, got ${headShort}): ${relPath}`,
+      );
+      fileResults.push({
+        file: relPath,
+        action: "skipped",
+        reason: "commit_mismatch",
+        bytes: 0,
+      });
       continue;
     }
     if (!existsSync(abs)) {
       filesSkipped++;
       skippedReasons.push(`not found: ${relPath}`);
-      fileResults.push({ file: relPath, action: "skipped", reason: "not found", bytes: 0 });
+      fileResults.push({
+        file: relPath,
+        action: "skipped",
+        reason: "not found",
+        bytes: 0,
+      });
       continue;
     }
 
     const size = statSync(abs).size;
     if (dryRun) {
       filesSkipped++;
-      fileResults.push({ file: relPath, action: "skipped", reason: "dry run", bytes: size });
+      fileResults.push({
+        file: relPath,
+        action: "skipped",
+        reason: "dry run",
+        bytes: size,
+      });
       rollbackLines.push(`# dry-run: would delete ${relPath}`);
       continue;
     }
@@ -156,12 +191,24 @@ export async function runExecutor(
       if (existsSync(abs)) await rm(abs, { force: true });
       filesDeleted++;
       bytesReclaimed += size;
-      fileResults.push({ file: relPath, action: "deleted", reason: item?.reason ?? "prune", bytes: size });
+      fileResults.push({
+        file: relPath,
+        action: "deleted",
+        reason: item?.reason ?? "prune",
+        bytes: size,
+      });
       rollbackLines.push(`git checkout HEAD -- ${relPath}`);
     } catch (err) {
       filesSkipped++;
-      skippedReasons.push(`delete failed: ${relPath} (${(err as Error).message})`);
-      fileResults.push({ file: relPath, action: "skipped", reason: "error", bytes: 0 });
+      skippedReasons.push(
+        `delete failed: ${relPath} (${(err as Error).message})`,
+      );
+      fileResults.push({
+        file: relPath,
+        action: "skipped",
+        reason: "error",
+        bytes: 0,
+      });
     }
   }
 
@@ -173,7 +220,9 @@ export async function runExecutor(
   if (existsSync(join(cwd, "pnpm-lock.yaml"))) buildCmd = "pnpm build";
   else {
     try {
-      const pkg = JSON.parse(await readFile(join(cwd, "package.json"), "utf-8"));
+      const pkg = JSON.parse(
+        await readFile(join(cwd, "package.json"), "utf-8"),
+      );
       if (pkg?.scripts?.build) buildCmd = "npm run build";
     } catch {}
   }
@@ -199,9 +248,17 @@ export async function runExecutor(
   let gitCommit = headShort;
   if (!dryRun && filesDeleted > 0) {
     try {
-      execFileSync("git", ["commit", "-am", `prune: remove ${filesDeleted} dead file(s) [ci skip]`], {
-        cwd,
-      });
+      execFileSync(
+        "git",
+        [
+          "commit",
+          "-am",
+          `prune: remove ${filesDeleted} dead file(s) [ci skip]`,
+        ],
+        {
+          cwd,
+        },
+      );
       gitCommit = gitShortHead(cwd);
     } catch {
       /* commit may fail if nothing staged; keep headShort */
@@ -227,7 +284,9 @@ export async function runExecutor(
   });
 
   // attach per-file results for downstream debrief (extra, non-schema)
-  (report as any).deleted_files = fileResults.filter((r) => r.action === "deleted");
+  (report as any).deleted_files = fileResults.filter(
+    (r) => r.action === "deleted",
+  );
   await writeFile(
     join(pruneDir, "execution-report.json"),
     JSON.stringify(report, null, 2),
