@@ -13,7 +13,7 @@
     "@surgical-pruning/reviewer": "workspace:*",
     "@surgical-pruning/planner": "workspace:*",
     "@surgical-pruning/executor": "workspace:*",
-    "execa": "^10.0.1"
+    "execa": "^8.0.1"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
