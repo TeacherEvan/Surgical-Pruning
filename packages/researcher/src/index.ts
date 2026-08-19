@@ -10,7 +10,7 @@ import {
 import { readFile } from "node:fs/promises";
 import { writeFile } from "node:fs/promises";
 import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { z } from "zod";
 
 // Type inference from Zod schemas
@@ -37,6 +37,10 @@ export async function runResearcher(
     reviewerHandoff,
     cwd = process.cwd(),
   } = options;
+  // INVARIANT: results are written into the TARGET workspace, not the launch
+  // cwd. `sink` is the resolved target so results land in the target repo even
+  // when invoked from a different directory.
+  const sink = resolve(cwd, targetPath);
 
   console.log(
     `[PRUNE-RESEARCHER] Analyzing prompt and researching best practices`,
@@ -116,8 +120,8 @@ export async function runResearcher(
     future_proofing: futureProofing,
   };
 
-  // Write output
-  const outputDir = join(cwd, ".prune");
+  // Write output into the TARGET workspace's .prune/ directory.
+  const outputDir = join(sink, ".prune");
   await mkdir(outputDir, { recursive: true });
   await writeFile(
     join(outputDir, "handoff-researcher.json"),

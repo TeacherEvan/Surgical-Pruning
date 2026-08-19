@@ -16,14 +16,14 @@ npx @surgical-pruning/cli ./my-project --prompt "remove dead code"
 surgical-pruning <target-path> [options]
 ```
 
-| Option | Description |
-| --- | --- |
-| `<target-path>` | Path to the repo you want to prune (required). |
-| `-p, --prompt <text>` | Free-text intent, e.g. "remove dead code aggressively". |
-| `--dry-run` | Plan only — no deletions. This is the **default** behavior. |
-| `--execute` | Run the guardian-executor (Agent 4A) + verifier (4B) against the persisted `PRUNE_MANIFEST.json`. **OFF by default** to preserve human-in-the-loop review. |
-| `--cwd <dir>` | Override the working directory used for git operations (defaults to the shell cwd). |
-| `-h, --help` | Show help. |
+| Option                | Description                                                                                                                                                |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<target-path>`       | Path to the repo you want to prune (required).                                                                                                             |
+| `-p, --prompt <text>` | Free-text intent, e.g. "remove dead code aggressively".                                                                                                    |
+| `--dry-run`           | Plan only — no deletions. This is the **default** behavior.                                                                                                |
+| `--execute`           | Run the guardian-executor (Agent 4A) + verifier (4B) against the persisted `PRUNE_MANIFEST.json`. **OFF by default** to preserve human-in-the-loop review. |
+| `--cwd <dir>`         | Override the working directory used for git operations (defaults to the shell cwd).                                                                        |
+| `-h, --help`          | Show help.                                                                                                                                                 |
 
 ## Examples
 
@@ -40,8 +40,8 @@ surgical-pruning ./my-project --prompt "Clean up unused exports" --execute
 1. **Reviewer (Agent 1)** — scans the target, builds a dependency map, writes `.prune/handoff-reviewer.json`.
 2. **Researcher (Agent 2)** — gathers language-specific best practices.
 3. **Planner (Agent 3)** — emits an interactive HTML plan + `.prune/PRUNE_MANIFEST.json`.
-4. **Executor (Agent 4A)** *[only with `--execute`]* — applies deletions behind git stash checkpoint + auto-generated rollback script. Never deletes protected paths (`*.pem`, `.env`, `node_modules/`, …) and never auto-deletes files below the `AUTO_PRUNE` confidence threshold (0.95).
-5. **Verifier (Agent 4B)** *[only with `--execute`]* — confirms the build still passes post-deletion.
+4. **Executor (Agent 4A)** _[only with `--execute`]_ — applies deletions behind git stash checkpoint + auto-generated rollback script. Never deletes protected paths (`*.pem`, `.env`, `node_modules/`, …) and never auto-deletes files below the `AUTO_PRUNE` confidence threshold (0.95).
+5. **Verifier (Agent 4B)** _[only with `--execute`]_ — confirms the build still passes post-deletion.
 6. **Debriefer / Auditor / Researcher-v2 (Agents 5–7)** — summarize, health-check, and suggest improvements.
 
 ## Safety model

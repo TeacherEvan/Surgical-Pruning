@@ -60,7 +60,11 @@ describe("phase7: executor safety guarantees", () => {
         language_specific_practices: {},
         general_practices: [],
         tool_recommendations: [],
-        future_proofing: { ci_integration: "", precommit_hook: "", dependency_budget: "" },
+        future_proofing: {
+          ci_integration: "",
+          precommit_hook: "",
+          dependency_budget: "",
+        },
       },
       cwd: dir,
     });
@@ -109,9 +113,7 @@ describe("phase7: executor safety guarantees", () => {
     const report = await runExecutor({ manifestPath, cwd: dir });
     expect(report.files_deleted).toBe(0);
     expect(existsSync(join(dir, "secret.pem"))).toBe(true);
-    expect(
-      report.skipped_reasons.some((r) => /protected/.test(r)),
-    ).toBe(true);
+    expect(report.skipped_reasons.some((r) => /protected/.test(r))).toBe(true);
   });
 
   it("low-confidence file is skipped for manual review, not auto-deleted", async () => {

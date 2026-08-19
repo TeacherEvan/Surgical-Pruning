@@ -2,7 +2,11 @@
 // Consumes a PRUNE_MANIFEST.json, applies deletions (or dry-run), and emits
 // an EXECUTION_REPORT.json. NEVER deletes a protected path.
 
-import { ExecutionReport, PROTECTED_PATHS, CONFIDENCE_THRESHOLDS } from "@surgical-pruning/core";
+import {
+  ExecutionReport,
+  PROTECTED_PATHS,
+  CONFIDENCE_THRESHOLDS,
+} from "@surgical-pruning/core";
 import type {
   ExecutionFileResult,
   BuildVerification,
@@ -65,10 +69,18 @@ export async function runExecutor(
   const manifestSha = createHash("sha256").update(raw).digest("hex");
 
   const dryRun = Boolean(manifest?.safety?.dry_run);
-  const absTarget = resolve(cwd, manifest?.target_path ?? ".");
+  // INVARIANT: all git/build/delete operations and the .prune/ output must
+  // target the WORKSPACE named in the manifest, not the directory the CLI was
+  // launched from. `opRoot` is the resolved target so even a mis-set `cwd`
+  // cannot scatter results into the launcher's repo.
+  const opRoot = resolve(cwd, manifest?.target_path ?? ".");
+  // Fallback: if the manifest target_path was already absolute, resolve() keeps
+  // it absolute; if it was relative, it is resolved against cwd. Either way the
+  // operational root is the target workspace.
+  const absTarget = opRoot;
 
-  // --- git commit match check ---
-  const headShort = gitShortHead(cwd);
+  // --- git commit match check --- (operates on the target workspace)
+  const headShort = gitShortHead(absTarget);
   const commitMatch = manifest?.git_commit === headShort;
   const checks: { name: string; passed: boolean; details?: string }[] = [
     { name: "manifest_checksum", passed: true },
@@ -87,7 +99,7 @@ export async function runExecutor(
           "-m",
           `prune-checkpoint-${Date.now()}", "--include-untracked`,
         ],
-        { cwd },
+        { cwd: absTarget },
       )
         .toString()
         .trim();
@@ -97,8 +109,8 @@ export async function runExecutor(
     }
   }
 
-  // --- rollback script ---
-  const pruneDir = join(cwd, ".prune");
+  // --- rollback script --- (written into the target workspace's .prune/)
+  const pruneDir = join(absTarget, ".prune");
   await mkdir(pruneDir, { recursive: true });
   const rollbackPath = join(pruneDir, `rollback-${Date.now()}.sh`);
   const rollbackLines: string[] = [
@@ -119,7 +131,7 @@ export async function runExecutor(
     const relPath = String(item?.path ?? "");
     if (!relPath) continue;
     filesProcessed++;
-    const abs = resolve(cwd, relPath);
+    const abs = resolve(absTarget, relPath);
 
     if (item?.action !== "delete") {
       filesSkipped++;
@@ -202,8 +214,8 @@ export async function runExecutor(
     }
 
     try {
-      if (isGitTracked(abs, cwd)) {
-        execFileSync("git", ["rm", "--cached", "-f", abs], { cwd });
+      if (isGitTracked(abs, absTarget)) {
+        execFileSync("git", ["rm", "--cached", "-f", abs], { cwd: absTarget });
       }
       await rm(abs, { force: true });
       // also remove from disk fully if git rm kept it
@@ -234,13 +246,13 @@ export async function runExecutor(
   rollbackLines.push("echo 'Rollback complete'");
   await writeFile(rollbackPath, rollbackLines.join("\n"), "utf-8");
 
-  // --- build verification ---
+  // --- build verification --- (build runs in the target workspace)
   let buildCmd = "(skipped)";
-  if (existsSync(join(cwd, "pnpm-lock.yaml"))) buildCmd = "pnpm build";
+  if (existsSync(join(absTarget, "pnpm-lock.yaml"))) buildCmd = "pnpm build";
   else {
     try {
       const pkg = JSON.parse(
-        await readFile(join(cwd, "package.json"), "utf-8"),
+        await readFile(join(absTarget, "package.json"), "utf-8"),
       );
       if (pkg?.scripts?.build) buildCmd = "npm run build";
     } catch {}
@@ -249,7 +261,7 @@ export async function runExecutor(
   const buildStart = Date.now();
   if (buildCmd !== "(skipped)" && !dryRun) {
     try {
-      execFileSync(buildCmd, { cwd, stdio: "ignore", shell: true });
+      execFileSync(buildCmd, { cwd: absTarget, stdio: "ignore", shell: true });
       buildExit = 0;
     } catch {
       buildExit = 1;
@@ -275,7 +287,7 @@ export async function runExecutor(
           `prune: remove ${filesDeleted} dead file(s) [ci skip]`,
         ],
         {
-          cwd,
+          cwd: absTarget,
         },
       );
       gitCommit = gitShortHead(cwd);

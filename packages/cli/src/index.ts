@@ -30,7 +30,15 @@ export async function runCLI(options: CLIOptions): Promise<void> {
     execute = false,
     cwd = process.cwd(),
   } = options;
+  // INVARIANT: every artifact (`.prune/*`, HTML plan, git commit) is written
+  // into the TARGET workspace, never into the directory the CLI was launched
+  // from. When the CLI runs from a different cwd (e.g. an agent's own dir or
+  // the Surgical-Pruning repo itself), using `process.cwd()` as the output
+  // root scattered results into the wrong repo and recorded the wrong git
+  // commit — the root cause of cross-agent chaos. `sink` is the resolved
+  // target and is threaded to every agent as its `cwd`.
   const absTarget = resolve(cwd, targetPath);
+  const sink = absTarget;
 
   console.log(
     "╔═══════════════════════════════════════════════════════════════════════════╗",
@@ -53,8 +61,8 @@ export async function runCLI(options: CLIOptions): Promise<void> {
   );
   console.log("");
 
-  // Ensure .prune directory exists
-  const pruneDir = join(cwd, ".prune");
+  // Ensure .prune directory exists (in the TARGET workspace, not launch cwd)
+  const pruneDir = join(sink, ".prune");
   await mkdir(pruneDir, { recursive: true });
 
   // ============================================================================
@@ -73,7 +81,7 @@ export async function runCLI(options: CLIOptions): Promise<void> {
   const reviewerHandoff: HandoffReviewer = await runReviewer({
     targetPath: absTarget,
     userPrompt,
-    cwd,
+    cwd: sink,
   });
 
   // ============================================================================
@@ -94,7 +102,7 @@ export async function runCLI(options: CLIOptions): Promise<void> {
     targetPath: absTarget,
     userPrompt,
     reviewerHandoff,
-    cwd,
+    cwd: sink,
   });
 
   // ============================================================================
@@ -114,7 +122,7 @@ export async function runCLI(options: CLIOptions): Promise<void> {
   const plannerOutput = await runPlanner({
     reviewerHandoff,
     researcherHandoff,
-    cwd,
+    cwd: sink,
     // The persisted PRUNE_MANIFEST.json mirrors the browser plan. Without an
     // explicit --execute, it is written as a dry-run plan (no deletions). The
     // verifier's git-commit check still gates real changes.
@@ -131,7 +139,7 @@ export async function runCLI(options: CLIOptions): Promise<void> {
   // Real deletions require the explicit --execute flag (default OFF), preserving
   // the human-in-the-loop safety model: the unattended CLI never deletes without
   // an opt-in. Without --execute the pipeline stops after planning.
-  const manifestPath = join(cwd, ".prune", "PRUNE_MANIFEST.json");
+  const manifestPath = join(sink, ".prune", "PRUNE_MANIFEST.json");
   if (execute && existsSync(manifestPath)) {
     console.log(
       "┌─────────────────────────────────────────────────────────────────────────────┐",
@@ -142,15 +150,15 @@ export async function runCLI(options: CLIOptions): Promise<void> {
     console.log(
       "└─────────────────────────────────────────────────────────────────────────────┘",
     );
-    const execLogPath = join(cwd, ".prune", "execution-report.json");
-    const executionReport = await runExecutor({ manifestPath, cwd });
+    const execLogPath = join(sink, ".prune", "execution-report.json");
+    const executionReport = await runExecutor({ manifestPath, cwd: sink });
     console.log(
       `Executor: ${executionReport.files_deleted} deleted, ${executionReport.files_skipped} skipped, ${executionReport.bytes_reclaimed} bytes reclaimed.`,
     );
     const verification = await runVerifier({
       manifestPath,
       executionLogPath: execLogPath,
-      cwd,
+      cwd: sink,
     });
     console.log(
       `Verifier: ${verification.passed ? "PASSED" : "FAILED"} (${verification.violations.length} violations)`,
@@ -174,10 +182,10 @@ export async function runCLI(options: CLIOptions): Promise<void> {
   // ============================================================================
   // PHASE 5/6/7: POST-EXECUTION AGENTS
   // ============================================================================
-  const reviewerHandoffPath = join(cwd, ".prune", "handoff-reviewer.json");
-  const execReportPath = join(cwd, ".prune", "execution-report.json");
-  const auditReportPath = join(cwd, ".prune", "audit-report.json");
-  const researcherHandoffPath = join(cwd, ".prune", "handoff-researcher.json");
+  const reviewerHandoffPath = join(sink, ".prune", "handoff-reviewer.json");
+  const execReportPath = join(sink, ".prune", "execution-report.json");
+  const auditReportPath = join(sink, ".prune", "audit-report.json");
+  const researcherHandoffPath = join(sink, ".prune", "handoff-researcher.json");
 
   console.log(
     "┌─────────────────────────────────────────────────────────────────────────────┐",
@@ -193,9 +201,9 @@ export async function runCLI(options: CLIOptions): Promise<void> {
     await runDebriefer({
       executionReportPath: execReportPath,
       reviewerHandoffPath,
-      cwd,
+      cwd: sink,
     });
-    console.log(`Debriefer: wrote ${join(cwd, ".prune", "DEBRIEF.md")}`);
+    console.log(`Debriefer: wrote ${join(sink, ".prune", "DEBRIEF.md")}`);
   } else {
     console.log("Debriefer: skipped (no execution report yet).");
   }
@@ -204,7 +212,7 @@ export async function runCLI(options: CLIOptions): Promise<void> {
     const audit = await runAuditor({
       targetPath: absTarget,
       reviewerHandoffPath,
-      cwd,
+      cwd: sink,
     });
     console.log(
       `Auditor: ${audit.architectural_smells.length} smells, ${audit.dependency_health.orphans.length} orphans.`,
@@ -217,7 +225,7 @@ export async function runCLI(options: CLIOptions): Promise<void> {
     const suggestions = await runResearcherV2({
       auditReportPath,
       researcherHandoffPath,
-      cwd,
+      cwd: sink,
     });
     console.log(
       `Researcher v2: ${suggestions.suggestions.length} suggestions.`,

@@ -10,9 +10,9 @@ Defined in `packages/core/src/schemas.ts`:
 
 ```ts
 export const CONFIDENCE_THRESHOLDS = {
-  AUTO_PRUNE: 0.95,       // >= this: executor may delete (with --execute)
-  REVIEW_REQUIRED: 0.7,   // below this: flagged for manual review
-  MANUAL_ONLY: 0.7,       // below this: never auto-deleted
+  AUTO_PRUNE: 0.95, // >= this: executor may delete (with --execute)
+  REVIEW_REQUIRED: 0.7, // below this: flagged for manual review
+  MANUAL_ONLY: 0.7, // below this: never auto-deleted
 };
 ```
 
@@ -41,8 +41,13 @@ an execution run:
   "git_commit": "<short HEAD at plan time>",
   "safety": { "dry_run": true },
   "selected_files": [
-    { "path": "src/old.ts", "action": "delete", "confidence": 0.99, "reason": "unused" }
-  ]
+    {
+      "path": "src/old.ts",
+      "action": "delete",
+      "confidence": 0.99,
+      "reason": "unused",
+    },
+  ],
 }
 ```
 

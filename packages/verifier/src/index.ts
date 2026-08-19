@@ -150,11 +150,14 @@ export async function runVerifier(
   options: VerifierOptions,
 ): Promise<VerificationReport> {
   const cwd = resolve(options.cwd ?? process.cwd());
+  // INVARIANT: git/build/verification-report must target the WORKSPACE named in
+  // the manifest, not the launch directory. `opRoot` resolves the manifest's
+  // target_path against cwd (absolute target_path stays absolute). This keeps
+  // results inside the target repo even if the CLI launched elsewhere.
+  const manifest = await loadManifest(options.manifestPath);
+  const opRoot = resolve(cwd, manifest?.target_path ?? ".");
   const checks: VerificationCheck[] = [];
   const violations: string[] = [];
-
-  // 2. Read + parse manifest (invalid => throw).
-  const manifest = await loadManifest(options.manifestPath);
 
   // a) manifest_present
   checks.push({
@@ -193,7 +196,7 @@ export async function runVerifier(
   });
 
   // c) git_status_clean
-  const porcelain = gitPorcelain(cwd);
+  const porcelain = gitPorcelain(opRoot);
   if (porcelain === null) {
     checks.push({
       name: "git_status_clean",
@@ -222,7 +225,7 @@ export async function runVerifier(
   }
 
   // d) build_passes
-  const buildCmd = await detectBuildCommand(cwd);
+  const buildCmd = await detectBuildCommand(opRoot);
   if (!buildCmd) {
     checks.push({
       name: "build_passes",
@@ -265,12 +268,12 @@ export async function runVerifier(
     passed,
     checks,
     violations,
-    report_path: join(cwd, ".prune", "verification-report.json"),
+    report_path: join(opRoot, ".prune", "verification-report.json"),
     timestamp,
   };
 
   // 6. Write verification-report.json (mkdir recursive first).
-  const outDir = join(cwd, ".prune");
+  const outDir = join(opRoot, ".prune");
   await mkdir(outDir, { recursive: true });
   await writeFile(report.report_path, JSON.stringify(report, null, 2), "utf8");
 

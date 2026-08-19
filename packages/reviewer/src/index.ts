@@ -40,18 +40,24 @@ export async function runReviewer(
   options: ReviewerOptions,
 ): Promise<HandoffReviewer> {
   const { targetPath, userPrompt, cwd = process.cwd() } = options;
+  // INVARIANT: results are written into the TARGET workspace, not the launch
+  // cwd. `sink` is the resolved target so that when this agent is invoked from
+  // a different directory (e.g. the Surgical-Pruning repo), `.prune/` and the
+  // git commit still land in the target repo.
+  const sink = resolve(cwd, targetPath);
   const startTime = Date.now();
 
   console.log(`[PRUNE-REVIEWER] Starting scan of ${targetPath}`);
 
-  // Get git info
-  const gitRoot = await getGitRoot(cwd);
-  const gitBranch = await getGitBranch(cwd);
-  const gitCommit = await getGitCommit(cwd);
+  // Git ops run against the target workspace so the recorded commit is the
+  // target repo's, not the launcher's.
+  const gitRoot = await getGitRoot(sink);
+  const gitBranch = await getGitBranch(sink);
+  const gitCommit = await getGitCommit(sink);
 
-  // Scan directory
+  // Scan directory (against the resolved target)
   const { files, folders } = await scanDirectory({
-    cwd,
+    cwd: sink,
     targetPath,
     exclusionPatterns: PROTECTED_PATTERNS,
   });
@@ -69,7 +75,7 @@ export async function runReviewer(
   // Detect constraints
   const languagesDetected = [...new Set(files.map((f) => f.language))];
   const frameworksDetected = detectFrameworks(files);
-  const packageManagers = detectPackageManagers(cwd);
+  const packageManagers = detectPackageManagers(sink);
   const monorepo =
     packageManagers.includes("pnpm") ||
     packageManagers.includes("yarn") ||
@@ -85,7 +91,7 @@ export async function runReviewer(
 
   // Build metadata
   const metadata: ReviewerMetadataType = {
-    target_path: resolve(cwd, targetPath),
+    target_path: sink,
     scan_timestamp: new Date().toISOString(),
     scan_duration_ms: Date.now() - startTime,
     git_root: gitRoot,
@@ -95,7 +101,7 @@ export async function runReviewer(
 
   // Optional cross-check with knip (spec-mandated tool). Runs only if a
   // knip binary is resolvable in the target; never throws on fixtures.
-  const knipIssues = await runKnipCrossCheck(cwd);
+  const knipIssues = await runKnipCrossCheck(sink);
 
   const handoff: HandoffReviewer = {
     metadata,
@@ -107,8 +113,8 @@ export async function runReviewer(
     external_knip_issues: knipIssues,
   };
 
-  // Write output
-  const outputDir = join(cwd, ".prune");
+  // Write output into the TARGET workspace's .prune/ directory.
+  const outputDir = join(sink, ".prune");
   await mkdir(outputDir, { recursive: true });
   await writeFile(
     join(outputDir, "handoff-reviewer.json"),

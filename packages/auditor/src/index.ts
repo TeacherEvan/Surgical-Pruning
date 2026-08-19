@@ -4,7 +4,7 @@
 
 import { AuditReport } from "@surgical-pruning/core";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 export interface AuditorOptions {
   targetPath: string;
@@ -24,6 +24,10 @@ export async function runAuditor(
   options: AuditorOptions,
 ): Promise<AuditReport> {
   const { targetPath, reviewerHandoffPath, cwd = process.cwd() } = options;
+  // INVARIANT: results are written into the TARGET workspace, not the launch
+  // cwd. `sink` is the resolved target so the audit report lands in the target
+  // repo even when invoked from a different directory.
+  const sink = resolve(cwd, targetPath);
 
   const raw = await readFile(reviewerHandoffPath, "utf-8").catch(() => "{}");
   const reviewer = safeParse<Record<string, any>>(raw, {});
@@ -76,7 +80,8 @@ export async function runAuditor(
     recommendations: [],
   });
 
-  const pruneDir = join(cwd, ".prune");
+  // Write output into the TARGET workspace's .prune/ directory.
+  const pruneDir = join(sink, ".prune");
   await mkdir(pruneDir, { recursive: true });
   await writeFile(
     join(pruneDir, "audit-report.json"),
