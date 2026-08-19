@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { HandoffReviewer, HandoffResearcher } from "@surgical-pruning/core";
 import { runReviewer } from "@surgical-pruning/reviewer";
 import { runResearcher } from "@surgical-pruning/researcher";
@@ -279,13 +280,15 @@ Examples:
     : "";
   const dryRun = args.includes("--dry-run");
   const execute = args.includes("--execute");
+  const cwdArgIdx = args.indexOf("--cwd");
+  const cwd = cwdArgIdx !== -1 ? args[cwdArgIdx + 1] : process.cwd();
 
   if (!targetPath) {
     console.error("Error: target-path is required");
     process.exit(1);
   }
 
-  await runCLI({ targetPath, userPrompt, dryRun, execute })
+  await runCLI({ targetPath, userPrompt, dryRun, execute, cwd })
     .then(() =>
       console.log(
         "\n✅ Implemented phases complete (Agents 1-2). Agents 3-7 pending — see status above.",

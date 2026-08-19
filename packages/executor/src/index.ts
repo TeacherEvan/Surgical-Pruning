@@ -2,7 +2,7 @@
 // Consumes a PRUNE_MANIFEST.json, applies deletions (or dry-run), and emits
 // an EXECUTION_REPORT.json. NEVER deletes a protected path.
 
-import { ExecutionReport, PROTECTED_PATHS } from "@surgical-pruning/core";
+import { ExecutionReport, PROTECTED_PATHS, CONFIDENCE_THRESHOLDS } from "@surgical-pruning/core";
 import type {
   ExecutionFileResult,
   BuildVerification,
@@ -138,6 +138,25 @@ export async function runExecutor(
         file: relPath,
         action: "skipped",
         reason: "protected",
+        bytes: 0,
+      });
+      continue;
+    }
+    // Confidence gate (Phase 7.1): never auto-delete a file below the
+    // AUTO_PRUNE threshold unless the manifest explicitly forces it. This
+    // preserves the human-in-the-loop safety model — low-confidence
+    // candidates require manual review, not blind deletion.
+    const conf = typeof item?.confidence === "number" ? item.confidence : 1;
+    const forced = Boolean(item?.force);
+    if (!dryRun && conf < CONFIDENCE_THRESHOLDS.AUTO_PRUNE && !forced) {
+      filesSkipped++;
+      skippedReasons.push(
+        `confidence ${conf} < ${CONFIDENCE_THRESHOLDS.AUTO_PRUNE} (manual review required): ${relPath}`,
+      );
+      fileResults.push({
+        file: relPath,
+        action: "skipped",
+        reason: "manual_review_required",
         bytes: 0,
       });
       continue;
