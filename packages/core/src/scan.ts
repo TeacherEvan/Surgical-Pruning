@@ -28,7 +28,7 @@ export async function scanDirectory(options: ScanOptions): Promise<{
   const absTarget = resolve(cwd, targetPath);
 
   const pattern = "**/*";
-  const allFiles = await glob(pattern, {
+  const rawFiles = await glob(pattern, {
     cwd: absTarget,
     absolute: true,
     ignore: exclusionPatterns,
@@ -36,12 +36,37 @@ export async function scanDirectory(options: ScanOptions): Promise<{
     dot: true,
   });
 
+  // ROOT-CAUSE FIX (2026-08-19): PROTECTED_PATHS entries like `node_modules/`
+  // are honored downstream (the executor never deletes them), but fast-glob's
+  // `ignore` does NOT stop the walker from *descending into* those trees. The
+  // scanner then analyzes every file under them — including a per-file git
+  // history call — which turns a sub-second scan of a tiny repo into a
+  // multi-minute spin (160MB node_modules => hundreds of thousands of files).
+  // Exclude the directory-protected trees from the walk outright. node_modules
+  // must stay on disk (the CLI runtime deps live there), so we filter
+  // post-glob rather than moving it. This only affects what gets *analyzed*;
+  // protected-path deletion guards remain intact in the executor/verifier.
+  const WALK_SKIP_SEGMENTS = new Set([
+    "node_modules",
+    ".git",
+    "dist",
+    ".next",
+    ".vercel",
+    ".turbo",
+    "build",
+    ".husky",
+    ".github",
+  ]);
+  const allFiles = rawFiles.filter(
+    (f) => !f.split(/[\\/]/).some((seg) => WALK_SKIP_SEGMENTS.has(seg)),
+  );
+
   const files: FileInventoryItem[] = [];
   const folderMap = new Map<string, FolderSummary>();
 
   for (const file of allFiles) {
     try {
-      const item = await analyzeFile(file, cwd, absTarget, exclusionPatterns);
+      const item = await analyzeFile(file, cwd, absTarget);
       files.push(item);
 
       const relDir = relative(absTarget, resolve(file, ".."));
@@ -89,7 +114,6 @@ async function analyzeFile(
   filePath: string,
   cwd: string,
   targetRoot: string,
-  exclusionPatterns: string[],
 ): Promise<FileInventoryItem> {
   const stats = await stat(filePath);
   const relPath = relative(targetRoot, filePath);
