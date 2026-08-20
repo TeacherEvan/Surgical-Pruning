@@ -6,6 +6,8 @@ import {
   GeneralPractice,
   ToolRecommendation,
   FutureProofing,
+  webSearch,
+  cite,
 } from "@surgical-pruning/core";
 import { readFile } from "node:fs/promises";
 import { writeFile } from "node:fs/promises";
@@ -49,8 +51,10 @@ export async function runResearcher(
   // Analyze user prompt
   const userPromptAnalysis = analyzeUserPrompt(userPrompt, reviewerHandoff);
 
-  // Research language-specific practices
-  const languageSpecificPractices = researchLanguagePractices(reviewerHandoff);
+  // Research language-specific practices (static baseline + live citations)
+  const languageSpecificPractices = await researchLanguagePractices(
+    reviewerHandoff,
+  );
 
   // General practices from spec + research
   const generalPractices: GeneralPracticeType[] = [
@@ -82,6 +86,27 @@ export async function runResearcher(
       priority: 0,
     },
   ];
+
+  // Live research: augment general practices with real, cited sources grounded
+  // in the current web (keyless). On network failure this degrades silently
+  // to the static baseline above.
+  try {
+    const live = await webSearch(
+      `codebase pruning dead code removal best practices ${userPrompt.slice(0, 40)}`,
+      3,
+      8000,
+    );
+    for (let i = 0; i < live.length; i++) {
+      const hit = live[i]!;
+      generalPractices.push({
+        practice: `Research-backed: ${hit.title.slice(0, 120)}`,
+        source: hit.url,
+        priority: 4 + i,
+      });
+    }
+  } catch {
+    /* offline: keep static baseline */
+  }
 
   // Tool recommendations
   const toolRecommendations: ToolRecommendationType[] = [
@@ -181,96 +206,75 @@ function analyzeUserPrompt(
   return { intent, scope, aggressiveness, constraints_from_user: constraints };
 }
 
-function researchLanguagePractices(
+async function researchLanguagePractices(
   reviewerHandoff: HandoffReviewer,
-): Record<string, LanguagePracticesType> {
+): Promise<Record<string, LanguagePracticesType>> {
   const practices: Record<string, LanguagePracticesType> = {};
   const languages = reviewerHandoff.constraints.languages_detected;
 
+  const STATIC: Record<string, LanguagePracticesType> = {
+    typescript: {
+      tools: [
+        { name: "knip", version: "latest", confidence: 0.95, config_example: "knip.json" },
+        { name: "ts-prune", version: "latest", confidence: 0.7, note: "legacy, limited" },
+        { name: "repowise get_dead_code", confidence: 0.98, note: "graph-aware, paid tier" },
+      ],
+      patterns: ["barrel file exports", "type-only imports", "conditional exports"],
+      entry_point_heuristics: ["next.js pages", "vite entry", "jest config", "storybook"],
+    },
+    javascript: {
+      tools: [
+        { name: "knip", version: "latest", confidence: 0.95, config_example: "knip.json" },
+        { name: "ts-prune", version: "latest", confidence: 0.7, note: "legacy, limited" },
+      ],
+      patterns: ["barrel file exports", "dynamic import()", "conditional exports"],
+      entry_point_heuristics: ["vite entry", "webpack entry", "jest config"],
+    },
+    python: {
+      tools: [
+        { name: "vulture", confidence: 0.85 },
+        { name: "pyflakes", confidence: 0.75 },
+      ],
+      patterns: ["__init__.py side effects", "plugin entry points", "click/typer CLI commands"],
+      entry_point_heuristics: ["main.py", "app.py", "cli.py", "setup.py"],
+    },
+    rust: {
+      tools: [{ name: "cargo-udeps", confidence: 0.9 }],
+      patterns: ["#[cfg(test)] modules", "feature-gated code", "dead_code allow"],
+      entry_point_heuristics: ["main.rs", "lib.rs", "bin/*.rs", "examples/*.rs"],
+    },
+    go: {
+      tools: [
+        { name: "govet", confidence: 0.8 },
+        { name: "staticcheck", confidence: 0.85 },
+      ],
+      patterns: ["build tags", "init() functions", "plugin packages"],
+      entry_point_heuristics: ["main.go", "cmd/**/main.go"],
+    },
+  };
+
   for (const lang of languages) {
-    switch (lang) {
-      case "typescript":
-      case "javascript":
-        practices[lang] = {
-          tools: [
-            {
-              name: "knip",
-              version: "latest",
-              confidence: 0.95,
-              config_example: "knip.json",
-            },
-            {
-              name: "ts-prune",
-              version: "latest",
-              confidence: 0.7,
-              note: "legacy, limited",
-            },
-            {
-              name: "repowise get_dead_code",
-              confidence: 0.98,
-              note: "graph-aware, paid tier",
-            },
-          ],
-          patterns: [
-            "barrel file exports",
-            "type-only imports",
-            "conditional exports",
-          ],
-          entry_point_heuristics: [
-            "next.js pages",
-            "vite entry",
-            "jest config",
-            "storybook",
-          ],
-        };
-        break;
-      case "python":
-        practices[lang] = {
-          tools: [
-            { name: "vulture", confidence: 0.85 },
-            { name: "pyflakes", confidence: 0.75 },
-          ],
-          patterns: [
-            "__init__.py side effects",
-            "plugin entry points",
-            "click/typer CLI commands",
-          ],
-          entry_point_heuristics: ["main.py", "app.py", "cli.py", "setup.py"],
-        };
-        break;
-      case "rust":
-        practices[lang] = {
-          tools: [{ name: "cargo-udeps", confidence: 0.9 }],
-          patterns: [
-            "#[cfg(test)] modules",
-            "feature-gated code",
-            "dead_code allow",
-          ],
-          entry_point_heuristics: [
-            "main.rs",
-            "lib.rs",
-            "bin/*.rs",
-            "examples/*.rs",
-          ],
-        };
-        break;
-      case "go":
-        practices[lang] = {
-          tools: [
-            { name: "govet", confidence: 0.8 },
-            { name: "staticcheck", confidence: 0.85 },
-          ],
-          patterns: ["build tags", "init() functions", "plugin packages"],
-          entry_point_heuristics: ["main.go", "cmd/**/main.go"],
-        };
-        break;
-      default:
-        practices[lang] = {
-          tools: [],
-          patterns: [],
-          entry_point_heuristics: [],
-        };
+    const base = STATIC[lang] ?? {
+      tools: [] as LanguagePracticesType["tools"],
+      patterns: [] as string[],
+      entry_point_heuristics: [] as string[],
+    };
+    // Live enrichment: attach a real citation to the primary tool per language.
+    const primaryTool = base.tools[0]?.name;
+    if (primaryTool) {
+      const fallback = `https://www.google.com/search?q=${encodeURIComponent(primaryTool + " " + lang + " dead code")}`;
+      try {
+        const url = await cite(
+          `${primaryTool} ${lang} dead code detection`,
+          fallback,
+          6000,
+        );
+        base.tools[0] = { ...base.tools[0]!, note: `Docs: ${url}` };
+      } catch {
+        /* keep static */
+      }
     }
+    practices[lang] = base;
   }
 
   return practices;

@@ -50,6 +50,11 @@ export const FileInventoryItem = z.object({
   git_history: GitHistory,
   dependency_graph: DependencyGraph,
   dead_code_signals: DeadCodeSignals,
+  // True when the path matches PROTECTED_PATHS. Such files are still SCANNED
+  // (unlike SCAN_WALK_SKIP trees) so they appear in the inventory and can be
+  // grouped as "Protected" by the planner, but the executor must never delete
+  // them.
+  is_protected: z.boolean().default(false),
 });
 
 export const FolderSummary = z.object({
@@ -225,9 +230,11 @@ export const VerificationCheck = z.object({
 
 export const ExecutionReport = z.object({
   manifest_sha256: z.string().length(64),
+  delete_set_sha256: z.string().length(64),
   checkpoint_stash: z.string(),
   rollback_script: FilePath,
   dry_run: z.boolean(),
+  aborted: z.boolean(),
   files_processed: z.number().int().nonnegative(),
   files_deleted: z.number().int().nonnegative(),
   files_skipped: z.number().int().nonnegative(),
@@ -366,6 +373,29 @@ export const PROTECTED_PATHS = [
 ] as const;
 
 export type ProtectedPaths = typeof PROTECTED_PATHS;
+
+/**
+ * SCAN_WALK_SKIP — directory trees the scanner must NOT descend into.
+ * These are heavy, generated, or dependency trees that would otherwise
+ * explode scan time (e.g. node_modules). They are distinct from
+ * PROTECTED_PATHS: protected *files* (config/test/entry) are still SCANNED
+ * and tagged `is_protected: true` so the planner can group them as
+ * "Protected" and the executor can refuse to delete them. Only these
+ * directory trees are excluded from the walk entirely.
+ */
+export const SCAN_WALK_SKIP = [
+  "node_modules",
+  ".git",
+  "dist",
+  ".next",
+  ".vercel",
+  ".turbo",
+  "build",
+  ".husky",
+  ".github",
+] as const;
+
+export type ScanWalkSkip = typeof SCAN_WALK_SKIP;
 
 export const CONFIDENCE_THRESHOLDS = {
   AUTO_PRUNE: 0.95,

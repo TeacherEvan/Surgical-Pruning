@@ -28,7 +28,9 @@ describe("cli/runCLI (full 7-agent pipeline)", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it("runs the full pipeline without throwing and produces agent artifacts", async () => {
+  it(
+    "runs the full pipeline without throwing and produces agent artifacts",
+    async () => {
     await expect(
       runCLI({
         targetPath: ".",
@@ -51,5 +53,7 @@ describe("cli/runCLI (full 7-agent pipeline)", () => {
     expect(existsSync(join(dir, ".prune", "audit-report.json"))).toBe(true);
     // Researcher v2 (Agent 7) writes suggestions (runs after audit + researcher handoff).
     expect(existsSync(join(dir, ".prune", "suggestions.json"))).toBe(true);
-  });
+    },
+    30000,
+  );
 });

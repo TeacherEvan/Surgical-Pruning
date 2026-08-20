@@ -52,18 +52,37 @@ describe("core/scanDirectory", () => {
   writeFileSync(join(dir, "sample.ts"), "export const foo = 1;\n");
   mkdirSync(join(dir, "sub"), { recursive: true });
   writeFileSync(join(dir, "sub", "bar.ts"), "export const bar = 2;\n");
+  // A protected-style file: must be SCANNED (present in inventory) and tagged
+  // is_protected, NOT excluded from the walk.
+  writeFileSync(
+    join(dir, "config.json"),
+    '{ "foo": "bar" }\n',
+  );
 
   it("inventories files and conforms to FileInventoryItem schema", async () => {
     const { files } = await scanDirectory({
       cwd: dir,
       targetPath: dir,
-      exclusionPatterns: [],
+      walkSkip: [],
+      protectedPatterns: ["config.*"],
     });
-    expect(files.length).toBe(2);
+    expect(files.length).toBe(3);
     const sample = files.find((f) => f.path.endsWith("sample.ts"));
     expect(sample).toBeTruthy();
     expect(FileInventoryItem.safeParse(sample).success).toBe(true);
     expect(sample!.language).toBe("typescript");
+  });
+
+  it("scans PROTECTED_PATHS files (does NOT skip them) and tags is_protected", async () => {
+    const { files } = await scanDirectory({
+      cwd: dir,
+      targetPath: dir,
+      walkSkip: [],
+      protectedPatterns: ["config.*"],
+    });
+    const cfg = files.find((f) => f.path.endsWith("config.json"));
+    expect(cfg).toBeTruthy();
+    expect(cfg!.is_protected).toBe(true);
   });
 
   it("cleanup removes the temp dir", () => {

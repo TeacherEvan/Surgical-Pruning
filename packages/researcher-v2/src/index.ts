@@ -3,6 +3,7 @@
 // matching the core Zod ResearcherV2Output schema.
 
 import { ResearcherV2Output } from "@surgical-pruning/core";
+import { webSearch, cite } from "@surgical-pruning/core";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -47,6 +48,16 @@ export async function runResearcherV2(
   let n = 0;
   const id = () => `s${++n}`;
 
+  // Live citation helper: returns a real, web-grounded URL when the network is
+  // reachable, otherwise the provided static fallback. Never throws.
+  const sourceFor = async (query: string, fallback: string) => {
+    try {
+      return await cite(query, fallback, 6000);
+    } catch {
+      return fallback;
+    }
+  };
+
   for (const smell of smells) {
     suggestions.push({
       id: id(),
@@ -56,7 +67,10 @@ export async function runResearcherV2(
       finding: `File has ${smell?.metric} lines and is flagged as a god_module (severity ${smell?.severity}).`,
       action:
         "Extract responsibilities into smaller modules; add barrel exports to preserve public API.",
-      source: "https://martinfowler.com/bliki/GodObject.html",
+      source: await sourceFor(
+        `god object refactoring ${smell?.file ?? "module"}`,
+        "https://martinfowler.com/bliki/GodObject.html",
+      ),
       effort: "M",
       impact: "Improved maintainability and reviewability.",
     });
@@ -71,7 +85,10 @@ export async function runResearcherV2(
       finding: `Detected orphaned files with zero references: ${orphans.join(", ")}.`,
       action:
         "Review and delete orphaned files via the planner (dry-run first), then commit in a scoped PR.",
-      source: "https://knip.dev/guide",
+      source: await sourceFor(
+        "detect and remove orphaned files dead code",
+        "https://knip.dev/guide",
+      ),
       effort: "S",
       impact: "Reduced surface area and bundle size.",
     });
@@ -84,7 +101,7 @@ export async function runResearcherV2(
     title: "Add knip to CI",
     finding: "No automated dead-code detection is configured.",
     action: "pnpm add -D knip && knip --reporter=json",
-    source: "https://github.com/webpro-nl/knip",
+    source: await sourceFor("knip dead code CI github action", "https://github.com/webpro-nl/knip"),
     effort: "S",
     impact: "Continuous dead-code detection on every PR.",
   });
@@ -97,7 +114,7 @@ export async function runResearcherV2(
     finding:
       "No pre-commit hook guards against accidental commits of dead/large files.",
     action: "pnpm add -D husky && husky init",
-    source: "https://typicode.github.io/husky/",
+    source: await sourceFor("husky pre-commit hook setup", "https://typicode.github.io/husky/"),
     effort: "S",
     impact: "Cheap safety net before each commit.",
   });
@@ -109,7 +126,7 @@ export async function runResearcherV2(
     title: "Set a bundle size budget",
     finding: "No enforced size budget for the build output.",
     action: "Configure a size-limit check in CI to fail on unexpected growth.",
-    source: "https://nextjs.org/docs/app/building-your-application/optimizing",
+    source: await sourceFor("bundle size budget CI size-limit", "https://nextjs.org/docs/app/building-your-application/optimizing"),
     effort: "M",
     impact: "Prevents silent bundle bloat.",
   });

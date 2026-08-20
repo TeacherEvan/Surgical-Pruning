@@ -17,9 +17,11 @@ async function initGit(dir: string): Promise<void> {
 
 const MINIMAL_EXEC_REPORT = {
   manifest_sha256: "0".repeat(64),
+  delete_set_sha256: "0".repeat(64),
   checkpoint_stash: "",
   rollback_script: "",
   dry_run: false,
+  aborted: false,
   files_processed: 2,
   files_deleted: 0,
   files_skipped: 0,
@@ -124,5 +126,45 @@ describe("GUARDIAN-VERIFIER (Agent 4B)", () => {
     expect(r.passed).toBe(true);
     const written = await stat(join(tmp, ".prune", "verification-report.json"));
     expect(written.isFile()).toBe(true);
+  });
+
+  it("Phase 5: manifest_integrity + delete_set_integrity pass when exec report matches manifest", async () => {
+    await writeFile(join(tmp, "old.ts"), "export const y = 2;\n");
+    await writeFile(
+      join(tmp, "package.json"),
+      JSON.stringify({ name: "tmp", scripts: { build: 'node -e "process.exit(0)"' } }),
+      "utf8",
+    );
+    const manifest = {
+      timestamp: new Date().toISOString(),
+      target_path: tmp,
+      git_commit: "abc1234",
+      selected_files: [{ path: "old.ts", action: "delete", confidence: 0.9, reason: "x" }],
+      protected_skipped: [],
+      estimated_reclamation: { bytes: 0, files: 0, ci_seconds: 0 },
+      safety: { dry_run: false, stash_created: false, rollback_script: "" },
+    };
+    const manifestPath = join(tmp, "prune-manifest.json");
+    await writeFile(manifestPath, JSON.stringify(manifest), "utf8");
+    const { createHash } = await import("node:crypto");
+    const manifestSha = createHash("sha256")
+      .update(JSON.stringify(manifest))
+      .digest("hex");
+    const deleteSetSha = createHash("sha256").update("old.ts").digest("hex");
+    const execReport = {
+      ...MINIMAL_EXEC_REPORT,
+      manifest_sha256: manifestSha,
+      delete_set_sha256: deleteSetSha,
+    };
+    const executionLogPath = join(tmp, "exec-report.json");
+    await writeFile(executionLogPath, JSON.stringify(execReport), "utf8");
+
+    const r = await runVerifier({ manifestPath, executionLogPath, cwd: tmp });
+    const names = r.checks.map((c) => c.name);
+    expect(names).toContain("manifest_integrity");
+    expect(names).toContain("delete_set_integrity");
+    expect(r.checks.find((c) => c.name === "manifest_integrity")?.passed).toBe(true);
+    expect(r.checks.find((c) => c.name === "delete_set_integrity")?.passed).toBe(true);
+    expect(r.passed).toBe(true);
   });
 });

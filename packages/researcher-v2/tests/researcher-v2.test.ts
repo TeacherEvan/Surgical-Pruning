@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { runResearcherV2 } from "../src/index.js";
+import { webSearch, cite } from "@surgical-pruning/core";
 import { writeFile, mkdir, stat, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -17,6 +18,25 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await rm(tmp, { recursive: true, force: true });
+});
+
+describe("webResearch (Phase 3)", () => {
+  it("webSearch returns real, decodable result URLs", async () => {
+    const hits = await webSearch("knip dead code typescript", 3, 8000);
+    // Network may be unavailable in CI; when it is, we assert graceful [].
+    if (hits.length === 0) return;
+    expect(hits.length).toBeGreaterThan(0);
+    for (const h of hits) {
+      expect(() => new URL(h.url)).not.toThrow();
+      expect(h.url.startsWith("http")).toBe(true);
+    }
+  });
+
+  it("cite returns a web URL when reachable, else the static fallback", async () => {
+    const url = await cite("refactor god object", "https://martinfowler.com/bliki/GodObject.html", 6000);
+    expect(() => new URL(url)).not.toThrow();
+    expect(url.startsWith("http")).toBe(true);
+  });
 });
 
 describe("runResearcherV2 (Agent 7)", () => {

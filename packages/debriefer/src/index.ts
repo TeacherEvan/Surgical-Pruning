@@ -59,6 +59,29 @@ export async function runDebriefer(options: DebrieferOptions): Promise<string> {
   const bytesReclaimed = Number(exec?.bytes_reclaimed ?? 0);
   const dryRun: boolean = Boolean(exec?.dry_run);
 
+  // --- F1: pre-prune baseline from the reviewer inventory (files / LOC / bytes) ---
+  const inventory: any[] = Array.isArray(reviewer?.file_inventory)
+    ? (reviewer.file_inventory as any[])
+    : [];
+  let baseFiles = inventory.length;
+  let baseLoc = 0;
+  let baseBytes = 0;
+  for (const f of inventory) {
+    baseLoc += Number(f?.loc ?? 0);
+    baseBytes += Number(f?.bytes ?? 0);
+  }
+  // If the inventory is empty (e.g. reviewer handoff missing), fall back to
+  // the folder_summary aggregate.
+  if (baseFiles === 0 && Array.isArray(reviewer?.folder_summary)) {
+    for (const fs of reviewer.folder_summary as any[]) {
+      baseFiles += Number(fs?.file_count ?? 0);
+      baseBytes += Number(fs?.total_bytes ?? 0);
+    }
+  }
+  const afterFiles = Math.max(0, baseFiles - filesDeleted);
+  const afterLoc = Math.max(0, baseLoc); // LOC removed is unknown without pre/post snapshot; report reclaimed bytes
+  const afterBytes = Math.max(0, baseBytes - bytesReclaimed);
+
   const deletedRows: DebriefFileRow[] = Array.isArray(
     (exec as any)?.deleted_files,
   )
@@ -93,6 +116,17 @@ export async function runDebriefer(options: DebrieferOptions): Promise<string> {
   );
   lines.push("");
 
+  // --- F1: Before / After / Δ reclamation table ---
+  lines.push("## Reclamation (Before / After / Δ)");
+  lines.push("");
+  lines.push("| Metric | Before | After | Δ |");
+  lines.push("| --- | --- | --- | --- |");
+  lines.push(
+    `| Files | ${baseFiles} | ${afterFiles} | -${filesDeleted} |`,
+  );
+  lines.push(`| Total bytes | ${fmtBytes(baseBytes)} | ${fmtBytes(afterBytes)} | -${fmtBytes(bytesReclaimed)} |`);
+  lines.push("");
+
   lines.push("## Target");
   lines.push("");
   lines.push(`\`${target}\``);
@@ -124,6 +158,21 @@ export async function runDebriefer(options: DebrieferOptions): Promise<string> {
     for (const r of skippedReasons) lines.push(`- ${r}`);
   } else {
     lines.push(`Skipped count: ${filesSkipped}`);
+  }
+  lines.push("");
+
+  // --- F2: separate "Flagged for review" (70-94% / manual_review_required) ---
+  const flaggedForReview: string[] = [];
+  const SKIP_RX = /(manual_review_required|confidence\s+\d+(\.\d+)?\s*<|review)/i;
+  for (const r of skippedReasons) {
+    if (SKIP_RX.test(r)) flaggedForReview.push(r);
+  }
+  lines.push("## Flagged for Review (manual, 70–94%)");
+  lines.push("");
+  if (flaggedForReview.length > 0) {
+    for (const r of flaggedForReview) lines.push(`- ${r}`);
+  } else {
+    lines.push("(none — all skips were protected, dry-run, or not-found)");
   }
   lines.push("");
 

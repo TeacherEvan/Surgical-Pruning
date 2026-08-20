@@ -299,7 +299,7 @@ Examples:
   await runCLI({ targetPath, userPrompt, dryRun, execute, cwd })
     .then(() =>
       console.log(
-        "\n✅ Implemented phases complete (Agents 1-2). Agents 3-7 pending — see status above.",
+        "\n✅ Pipeline complete — all 7 agents implemented and executed (where applicable).",
       ),
     )
     .catch((err) => {

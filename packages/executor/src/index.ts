@@ -12,7 +12,7 @@ import type {
   BuildVerification,
 } from "@surgical-pruning/core";
 import { execFileSync } from "node:child_process";
-import { existsSync, statSync } from "node:fs";
+import { existsSync, statSync, rmSync } from "node:fs";
 import { readFile, writeFile, mkdir, rm } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join, resolve } from "node:path";
@@ -21,6 +21,9 @@ export interface ExecutorOptions {
   manifestPath: string;
   cwd?: string;
 }
+
+// Per-run lock to prevent concurrent executions against the same workspace.
+const LOCK_PATH = (root: string) => join(root, ".prune", "executor.lock");
 
 function isProtected(filePath: string, patterns: readonly string[]): boolean {
   const name = filePath.split("/").pop() ?? filePath;
@@ -69,17 +72,37 @@ export async function runExecutor(
   const manifestSha = createHash("sha256").update(raw).digest("hex");
 
   const dryRun = Boolean(manifest?.safety?.dry_run);
-  // INVARIANT: all git/build/delete operations and the .prune/ output must
-  // target the WORKSPACE named in the manifest, not the directory the CLI was
-  // launched from. `opRoot` is the resolved target so even a mis-set `cwd`
-  // cannot scatter results into the launcher's repo.
   const opRoot = resolve(cwd, manifest?.target_path ?? ".");
-  // Fallback: if the manifest target_path was already absolute, resolve() keeps
-  // it absolute; if it was relative, it is resolved against cwd. Either way the
-  // operational root is the target workspace.
   const absTarget = opRoot;
 
-  // --- git commit match check --- (operates on the target workspace)
+  // --- concurrency guard: refuse to run if a lock already exists -----------
+  const lockFile = LOCK_PATH(absTarget);
+  if (existsSync(lockFile)) {
+    throw new Error(
+      `Executor already running (lock present at ${lockFile}). Aborting to prevent concurrent mutations.`,
+    );
+  }
+  await mkdir(join(absTarget, ".prune"), { recursive: true });
+  await writeFile(lockFile, String(process.pid), "utf-8");
+  const releaseLock = () => {
+    try {
+      rmSync(lockFile);
+    } catch {
+      /* best effort */
+    }
+  };
+
+  // Plan the delete set up front so we can record its SHA256 (for the verifier
+  // to confirm the same set was actually removed).
+  const deletePlan = (Array.isArray(manifest?.selected_files)
+    ? (manifest.selected_files as any[])
+    : []
+  ).filter((i) => String(i?.action ?? "") === "delete" && String(i?.path ?? ""));
+  const deleteSetSha = createHash("sha256")
+    .update(deletePlan.map((i) => String(i.path)).sort().join("\n"))
+    .digest("hex");
+
+  // --- git commit match check ---
   const headShort = gitShortHead(absTarget);
   const commitMatch = manifest?.git_commit === headShort;
   const checks: { name: string; passed: boolean; details?: string }[] = [
@@ -122,6 +145,7 @@ export async function runExecutor(
   let filesDeleted = 0;
   let filesSkipped = 0;
   let bytesReclaimed = 0;
+  let aborted = false;
   const skippedReasons: string[] = [];
   const fileResults: ExecutionFileResult[] = [];
 
@@ -218,7 +242,6 @@ export async function runExecutor(
         execFileSync("git", ["rm", "--cached", "-f", abs], { cwd: absTarget });
       }
       await rm(abs, { force: true });
-      // also remove from disk fully if git rm kept it
       if (existsSync(abs)) await rm(abs, { force: true });
       filesDeleted++;
       bytesReclaimed += size;
@@ -230,9 +253,11 @@ export async function runExecutor(
       });
       rollbackLines.push(`git checkout HEAD -- ${relPath}`);
     } catch (err) {
+      // ABORT on first real failure: stop, restore everything we touched via
+      // the rollback script, and mark the run aborted.
       filesSkipped++;
       skippedReasons.push(
-        `delete failed: ${relPath} (${(err as Error).message})`,
+        `delete failed (ABORTING): ${relPath} (${(err as Error).message})`,
       );
       fileResults.push({
         file: relPath,
@@ -240,11 +265,42 @@ export async function runExecutor(
         reason: "error",
         bytes: 0,
       });
+      aborted = true;
+      break;
     }
   }
 
   rollbackLines.push("echo 'Rollback complete'");
   await writeFile(rollbackPath, rollbackLines.join("\n"), "utf-8");
+
+  // Persist a dry-run log so reviewers can see exactly what WOULD be deleted.
+  if (dryRun) {
+    const dryRunLog = {
+      timestamp: new Date().toISOString(),
+      target_path: manifest?.target_path ?? ".",
+      git_commit: manifest?.git_commit ?? "",
+      planned_deletions: deletePlan.map((i) => String(i.path)),
+      delete_set_sha256: deleteSetSha,
+    };
+    await writeFile(
+      join(pruneDir, "DRYRUN_LOG.json"),
+      JSON.stringify(dryRunLog, null, 2),
+      "utf-8",
+    );
+  }
+
+  // On abort (a delete failed mid-run), restore everything via the rollback
+  // script and do NOT run the build/commit verification.
+  if (aborted && !dryRun) {
+    try {
+      execFileSync("bash", [rollbackPath], { cwd: absTarget });
+      skippedReasons.push("ABORT: rollback script executed to restore files.");
+    } catch {
+      skippedReasons.push(
+        "ABORT: rollback script failed — manual recovery required.",
+      );
+    }
+  }
 
   // --- build verification --- (build runs in the target workspace)
   let buildCmd = "(skipped)";
@@ -300,9 +356,11 @@ export async function runExecutor(
 
   const report: ExecutionReport = ExecutionReport.parse({
     manifest_sha256: manifestSha,
+    delete_set_sha256: deleteSetSha,
     checkpoint_stash: checkpointStash,
     rollback_script: rollbackPath,
     dry_run: dryRun,
+    aborted,
     files_processed: filesProcessed,
     files_deleted: filesDeleted,
     files_skipped: filesSkipped,
@@ -324,6 +382,7 @@ export async function runExecutor(
     "utf-8",
   );
 
+  releaseLock();
   return report;
 }
 

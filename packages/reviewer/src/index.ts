@@ -4,6 +4,7 @@ import {
   EffectedSystem,
   ReviewerMetadata,
   PROTECTED_PATHS,
+  SCAN_WALK_SKIP,
 } from "@surgical-pruning/core";
 import {
   scanDirectory,
@@ -22,9 +23,6 @@ import { z } from "zod";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = resolve(__filename, "..");
-
-// Convert readonly array to mutable
-const PROTECTED_PATTERNS = [...PROTECTED_PATHS];
 
 // Types from Zod schemas
 type ConstraintsType = z.infer<typeof Constraints>;
@@ -55,11 +53,15 @@ export async function runReviewer(
   const gitBranch = await getGitBranch(sink);
   const gitCommit = await getGitCommit(sink);
 
-  // Scan directory (against the resolved target)
+  // Scan directory (against the resolved target). Only SCAN_WALK_SKIP trees
+  // (node_modules/dist/...) are excluded from the walk for performance;
+  // PROTECTED_PATHS files (config/test/entry/secrets) are still scanned and
+  // tagged is_protected so the planner can group them as "Protected".
   const { files, folders } = await scanDirectory({
     cwd: sink,
     targetPath,
-    exclusionPatterns: PROTECTED_PATTERNS,
+    walkSkip: SCAN_WALK_SKIP,
+    protectedPatterns: PROTECTED_PATHS,
   });
 
   console.log(
@@ -82,7 +84,7 @@ export async function runReviewer(
     packageManagers.includes("npm");
 
   const constraints: ConstraintsType = {
-    exclusion_patterns_applied: [...PROTECTED_PATTERNS],
+    exclusion_patterns_applied: [...PROTECTED_PATHS],
     languages_detected: languagesDetected,
     frameworks_detected: frameworksDetected,
     package_managers: packageManagers,

@@ -8,7 +8,7 @@ import {
   stat,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, basename } from "node:path";
 import { runPlanner } from "../src/index.js";
 
 function makeReviewerHandoff() {
@@ -192,5 +192,37 @@ describe("runPlanner", () => {
     expect(deadEntry?.action).toBe("delete");
     expect(manifest.protected_skipped).toContain(".github/workflows/ci.yml");
     expect(manifest.safety.dry_run).toBe(true);
+  });
+
+  it("renders the three diagram modes + self-contained, themed plan (Phase 1)", async () => {
+    const reviewerHandoff = makeReviewerHandoff();
+    const researcherHandoff = makeResearcherHandoff();
+    const out = await runPlanner({
+      reviewerHandoff,
+      researcherHandoff,
+      cwd: tmp,
+    });
+    const html = await readFile(out, "utf8");
+
+    // No external (CDN) scripts — must be fully self-contained / offline.
+    expect(html).not.toMatch(/<script[^>]+src=["']https?:/);
+
+    // Three diagram panes present.
+    expect(html).toContain('data-diagpane="tree"');
+    expect(html).toContain('data-diagpane="mermaid"');
+    expect(html).toContain('data-diagpane="circle"');
+    // SVGs actually produced (radial + flow + pack each emit an <svg>).
+    const svgCount = (html.match(/<svg/g) || []).length;
+    expect(svgCount).toBeGreaterThanOrEqual(3);
+
+    // Theme toggle + ARIA tab semantics + postMessage PRUNE handoff.
+    expect(html).toContain('id="themeBtn"');
+    expect(html).toContain('role="tablist"');
+    expect(html).toContain('PRUNE_TRIGGER');
+    expect(html).toContain('localStorage.setItem("sp-theme"');
+
+    // Also persisted into .prune/ (spec deviation: plan lives beside artifacts).
+    const pruneHtml = join(tmp, ".prune", basename(out));
+    expect((await stat(pruneHtml)).isFile()).toBe(true);
   });
 });

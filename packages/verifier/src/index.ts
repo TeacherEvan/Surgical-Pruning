@@ -10,6 +10,7 @@ import { PROTECTED_PATHS } from "@surgical-pruning/core";
 import type { ExecutionReport } from "@surgical-pruning/core";
 import { readFile, stat, mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 
 export interface VerifierOptions {
@@ -167,6 +168,54 @@ export async function runVerifier(
       ? `selected_files: ${manifest.selected_files.length}`
       : "manifest.selected_files missing or not an array",
   });
+
+  // a2) manifest_integrity: the manifest on disk must hash to the same
+  // sha256 the executor recorded, proving it was not tampered with between
+  // execution and verification.
+  const preExec = await loadExecutionLog(options.executionLogPath);
+  if (preExec.json?.manifest_sha256) {
+    const fresh = createHash("sha256")
+      .update(await readFile(options.manifestPath, "utf8"))
+      .digest("hex");
+    const ok = fresh === preExec.json.manifest_sha256;
+    checks.push({
+      name: "manifest_integrity",
+      passed: ok,
+      details: ok
+        ? "manifest sha256 matches execution report"
+        : `manifest sha256 mismatch (expected ${preExec.json.manifest_sha256}, got ${fresh})`,
+    });
+    if (!ok) violations.push("Manifest sha256 changed since execution.");
+  } else {
+    checks.push({
+      name: "manifest_integrity",
+      passed: true,
+      details: "no execution report sha256 to compare (skipped)",
+    });
+  }
+
+  // a3) delete_set_integrity: the set of delete-targeted files recorded by the
+  // executor must match a fresh computation of the manifest's delete set.
+  if (preExec.json?.delete_set_sha256) {
+    const planned = (Array.isArray(manifest?.selected_files)
+      ? (manifest.selected_files as any[])
+      : []
+    )
+      .filter((i) => String(i?.action ?? "") === "delete" && String(i?.path ?? ""))
+      .map((i) => String(i.path))
+      .sort()
+      .join("\n");
+    const fresh = createHash("sha256").update(planned).digest("hex");
+    const ok = fresh === preExec.json.delete_set_sha256;
+    checks.push({
+      name: "delete_set_integrity",
+      passed: ok,
+      details: ok
+        ? "delete set sha256 matches execution report"
+        : "delete set sha256 mismatch (manifest edited after execution)",
+    });
+    if (!ok) violations.push("Delete set changed since execution.");
+  }
 
   // b) no_protected_files_targeted
   let protectedOk = true;

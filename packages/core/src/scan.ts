@@ -4,11 +4,15 @@ import fg from "fast-glob";
 const { glob } = fg;
 import type { FileInventoryItem, FolderSummary } from "./schemas.js";
 import { getFileGitHistory } from "./git.js";
+import { PROTECTED_PATHS, SCAN_WALK_SKIP } from "./schemas.js";
 
 export interface ScanOptions {
   cwd: string;
   targetPath: string;
-  exclusionPatterns: string[];
+  /** Directory trees to skip walking into (heavy/generated deps). */
+  walkSkip?: readonly string[];
+  /** Deletion-guard path patterns; matched files are still scanned & tagged. */
+  protectedPatterns?: readonly string[];
 }
 
 export interface DependencyGraphPartial {
@@ -24,39 +28,31 @@ export async function scanDirectory(options: ScanOptions): Promise<{
   files: FileInventoryItem[];
   folders: FolderSummary[];
 }> {
-  const { cwd, targetPath, exclusionPatterns } = options;
+  const {
+    cwd,
+    targetPath,
+    walkSkip = SCAN_WALK_SKIP,
+    protectedPatterns = PROTECTED_PATHS,
+  } = options;
   const absTarget = resolve(cwd, targetPath);
 
   const pattern = "**/*";
   const rawFiles = await glob(pattern, {
     cwd: absTarget,
     absolute: true,
-    ignore: exclusionPatterns,
+    ignore: [...walkSkip, "**/node_modules/**", "**/.git/**"],
     onlyFiles: true,
     dot: true,
   });
 
-  // ROOT-CAUSE FIX (2026-08-19): PROTECTED_PATHS entries like `node_modules/`
-  // are honored downstream (the executor never deletes them), but fast-glob's
-  // `ignore` does NOT stop the walker from *descending into* those trees. The
-  // scanner then analyzes every file under them — including a per-file git
-  // history call — which turns a sub-second scan of a tiny repo into a
-  // multi-minute spin (160MB node_modules => hundreds of thousands of files).
-  // Exclude the directory-protected trees from the walk outright. node_modules
-  // must stay on disk (the CLI runtime deps live there), so we filter
-  // post-glob rather than moving it. This only affects what gets *analyzed*;
-  // protected-path deletion guards remain intact in the executor/verifier.
-  const WALK_SKIP_SEGMENTS = new Set([
-    "node_modules",
-    ".git",
-    "dist",
-    ".next",
-    ".vercel",
-    ".turbo",
-    "build",
-    ".husky",
-    ".github",
-  ]);
+  // ROOT-CAUSE FIX (2026-08-19, refined 2026-08-20): SCAN_WALK_SKIP entries
+  // (node_modules, dist, .next, ...) must be excluded from the *walk* so a
+  // multi-minute spin on huge dep trees is avoided. PROTECTED_PATHS (config/
+  // test/entry/secrets) are intentionally NOT excluded from the walk — those
+  // files are still scanned and tagged `is_protected: true` so the planner can
+  // surface them as "Protected". The executor/verifier deletion guards remain
+  // the single source of truth for what may never be deleted.
+  const WALK_SKIP_SEGMENTS = new Set<string>(walkSkip);
   const allFiles = rawFiles.filter(
     (f) => !f.split(/[\\/]/).some((seg) => WALK_SKIP_SEGMENTS.has(seg)),
   );
@@ -67,6 +63,9 @@ export async function scanDirectory(options: ScanOptions): Promise<{
   for (const file of allFiles) {
     try {
       const item = await analyzeFile(file, cwd, absTarget);
+      if (isProtectedFile(item.path, [...protectedPatterns])) {
+        item.is_protected = true;
+      }
       files.push(item);
 
       const relDir = relative(absTarget, resolve(file, ".."));
@@ -97,8 +96,7 @@ export async function scanDirectory(options: ScanOptions): Promise<{
         folder.newest_doc = item.last_modified;
       if (item.dead_code_signals.confidence >= 0.7)
         folder.dead_code_candidates++;
-      if (isProtectedFile(item.path, exclusionPatterns))
-        folder.protected_files++;
+      if (item.is_protected) folder.protected_files++;
     } catch (err) {
       console.warn(`Failed to analyze ${file}:`, err);
     }
@@ -106,6 +104,19 @@ export async function scanDirectory(options: ScanOptions): Promise<{
 
   // Second pass: populate imported_by from the collected imports.
   buildImportedBy(files);
+
+  // Third pass: mark unreachable files. A file is unreachable when it is not
+  // an entry point, not a test, not a config, and nothing imports it
+  // (imported_by is empty). Entry points / tests / configs are always
+  // considered reachable even if nothing references them directly.
+  for (const f of files) {
+    const dg = f.dependency_graph;
+    const isReachableAnchor =
+      dg.is_entry_point || dg.is_test || dg.is_config;
+    if (!isReachableAnchor && dg.imported_by.length === 0) {
+      f.dead_code_signals.unreachable = true;
+    }
+  }
 
   return { files, folders: Array.from(folderMap.values()) };
 }
@@ -147,6 +158,7 @@ async function analyzeFile(
     git_history: gitHistory,
     dependency_graph: dependencyGraph,
     dead_code_signals: deadCodeSignals,
+    is_protected: false,
   };
 }
 
