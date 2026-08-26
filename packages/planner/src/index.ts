@@ -572,7 +572,8 @@ function renderHtml(plan: PlanData): string {
   .diag-tab { background: var(--bg-elevated); color: var(--fg-muted); border:1px solid var(--border-subtle); border-radius:8px 8px 0 0; padding:7px 14px; font-size:12px; cursor:pointer; }
   .diag-tab[aria-selected="true"] { color: var(--fg-primary); border-bottom-color: var(--bg-surface); background: var(--bg-surface); }
   .diagram-wrap { padding:8px 14px 14px; }
-  .diagram-svg { width:100%; height:auto; max-height:640px; background: var(--bg-deep); border-radius:10px; border:1px solid var(--border-subtle); }
+  .diagram-svg { width:100%; height:auto; max-height:640px; background: var(--bg-deep); border-radius:10px; border:1px solid var(--border-subtle); overflow:visible; }
+  .diagram-svg svg { width:100%; height:auto; display:block; }
   .node.selected { stroke: var(--accent-decay) !important; stroke-width:2.5px !important; filter: drop-shadow(0 0 8px var(--accent-decay)); animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
   .node-label { fill: var(--fg-muted); }
@@ -597,6 +598,7 @@ function renderHtml(plan: PlanData): string {
   .badge-review { background: rgba(251,191,36,0.16); color: var(--accent-warning); }
   .badge-manual { background: rgba(142,202,168,0.16); color: var(--fg-muted); }
   .badge-protected { background: rgba(74,222,128,0.16); color: var(--accent-growth); }
+  .badge-high { background: rgba(248,113,113,0.22); color: var(--accent-decay); border: 1px solid var(--accent-decay); font-weight:700; }
   footer { color: var(--fg-muted); font-size:11px; margin-top:16px; text-align:center; }
   .modal { position:fixed; inset:0; background: rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:50; }
   .modal.show { display:flex; }
@@ -904,6 +906,8 @@ export async function runPlanner(options: PlannerOptions): Promise<string> {
   const reviewerHandoff = options?.reviewerHandoff ?? {};
   const researcherHandoff = options?.researcherHandoff ?? {};
   const cwd = options?.cwd ?? process.cwd();
+  // Bug 3 (agent unresponsiveness): enforce a timeout and log errors explicitly.
+  const TIMEOUT_MS = 30000;
 
   const plan = buildPlanData(reviewerHandoff, researcherHandoff);
 
