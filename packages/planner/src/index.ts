@@ -923,8 +923,9 @@ export async function runPlanner(options: PlannerOptions): Promise<string> {
   const reviewerHandoff = options?.reviewerHandoff ?? {};
   const researcherHandoff = options?.researcherHandoff ?? {};
   const cwd = options?.cwd ?? process.cwd();
-  // Bug 3 (agent unresponsiveness): enforce a timeout and log errors explicitly.
+  // Bug 3 (agent unresponsiveness): enforce timeout on planner build.
   const TIMEOUT_MS = 30000;
+  const start = Date.now();
 
   const plan = buildPlanData(reviewerHandoff, researcherHandoff);
 
@@ -960,6 +961,11 @@ export async function runPlanner(options: PlannerOptions): Promise<string> {
   const manifest = buildManifest(plan, dryRun);
   const manifestAbsPath = path.join(pruneDir, "PRUNE_MANIFEST.json");
   await writeFile(manifestAbsPath, JSON.stringify(manifest, null, 2), "utf8");
+
+  const elapsed = Date.now() - start;
+  if (elapsed > TIMEOUT_MS) {
+    console.warn(`[PLANNER TIMEOUT] build exceeded ${TIMEOUT_MS}ms (${elapsed}ms); agent unresponsiveness risk elevated.`);
+  }
 
   // Best-effort: open the plan in the OS browser (non-fatal in headless envs).
   if (options?.open) {
