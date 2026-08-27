@@ -571,7 +571,10 @@ function renderHtml(plan: PlanData): string {
   .diagram-tabs { display:flex; gap:8px; padding:12px 14px 0; }
   .diag-tab { background: var(--bg-elevated); color: var(--fg-muted); border:1px solid var(--border-subtle); border-radius:8px 8px 0 0; padding:7px 14px; font-size:12px; cursor:pointer; }
   .diag-tab[aria-selected="true"] { color: var(--fg-primary); border-bottom-color: var(--bg-surface); background: var(--bg-surface); }
-  .diagram-wrap { padding:8px 14px 14px; }
+  .diagram-wrap { padding:8px 14px 14px; position:relative; }
+  .zoom-wrap { position:relative; overflow:hidden; border-radius:10px; }
+  .zoom-wrap.zoomed { cursor: grab; }
+  .zoom-ctrl { position:absolute; bottom:14px; right:14px; z-index:10; display:flex; gap:6px; }
   .diagram-svg { width:100%; height:auto; max-height:640px; background: var(--bg-deep); border-radius:10px; border:1px solid var(--border-subtle); overflow:visible; }
   .diagram-svg svg { width:100%; height:auto; display:block; }
   .node.selected { stroke: var(--accent-decay) !important; stroke-width:2.5px !important; filter: drop-shadow(0 0 8px var(--accent-decay)); animation: pulse 2s infinite; }
@@ -638,10 +641,15 @@ function renderHtml(plan: PlanData): string {
       <button class="diag-tab" role="tab" aria-selected="false" data-diag="mermaid">MERMAID</button>
       <button class="diag-tab" role="tab" aria-selected="false" data-diag="circle">CIRCLE</button>
     </div>
-    <div class="diagram-wrap">
+    <div class="zoom-wrap" id="zoomWrap">
       <div data-diagpane="tree">${treeSvg}</div>
       <div data-diagpane="mermaid" hidden>${flowSvg}</div>
       <div data-diagpane="circle" hidden>${packSvg}</div>
+      <div class="zoom-ctrl" aria-label="Diagram zoom controls" role="toolbar">
+        <button class="chip" aria-label="Zoom in" id="zoomIn">+</button>
+        <button class="chip" aria-label="Zoom out" id="zoomOut">−</button>
+        <button class="chip" aria-label="Reset zoom" id="zoomReset">⟲</button>
+      </div>
     </div>
     <div class="blob-wrap">
       ${blobSvg}
@@ -854,6 +862,15 @@ function renderHtml(plan: PlanData): string {
   });
   document.getElementById("dryBtn").addEventListener("click", function () { runPrune(true); });
   document.getElementById("exportBtn").addEventListener("click", exportPlan);
+
+  // Zoom mechanism: scale SVG contents on button / mousewheel.
+  var zoomWrap = document.getElementById("zoomWrap");
+  var scale = 1;
+  function applyScale() { zoomWrap.style.transform = "scale(" + scale + ")"; zoomWrap.classList.toggle("zoomed", scale > 1); }
+  document.getElementById("zoomIn").addEventListener("click", function(){ scale = Math.min(3, scale + 0.25); applyScale(); });
+  document.getElementById("zoomOut").addEventListener("click", function(){ scale = Math.max(0.4, scale - 0.25); applyScale(); });
+  document.getElementById("zoomReset").addEventListener("click", function(){ scale = 1; applyScale(); });
+  zoomWrap.addEventListener("wheel", function(e){ if(e.ctrlKey||e.metaKey){ e.preventDefault(); scale = Math.min(3, Math.max(0.4, scale + (e.deltaY>0 ? -0.1 : 0.1))); applyScale(); }}, {passive:false});
 
   renderList();
 })();
