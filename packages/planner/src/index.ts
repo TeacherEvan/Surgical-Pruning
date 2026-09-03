@@ -612,7 +612,7 @@ function renderHtml(plan: PlanData): string {
 </head>
 <body>
 <div class="wrap">
-  <header>
+  <header role="banner">
     <div>
       <h1>SURGICAL PRUNING — ${escapeHtml(plan.target)} — ${escapeHtml(plan.date)}</h1>
       <div class="sub">git: ${escapeHtml(plan.gitCommit)}</div>
@@ -625,16 +625,16 @@ function renderHtml(plan: PlanData): string {
     </div>
   </header>
 
-  <div class="panel">
+  <div class="panel" role="main">
     <div class="toolbar">
-      <div class="chips" role="tablist" aria-label="Filter by group">${chips}</div>
+      <div class="chips" role="tablist" aria-label="Filter by group" role="navigation">${chips}</div>
       <div class="spacer"></div>
       <button class="theme-toggle" id="themeBtn" aria-label="Toggle theme">🌿 Nature</button>
       <button class="action btn-export" id="exportBtn">EXPORT PLAN</button>
       <button class="action btn-dry" id="dryBtn">DRY RUN</button>
       <button class="action btn-prune" id="pruneBtn">PRUNE</button>
     </div>
-    <div class="summary" id="summary"></div>
+    <div class="summary" id="summary" aria-live="polite" aria-atomic="true"></div>
 
     <div class="diagram-tabs" role="tablist" aria-label="Diagram mode">
       <button class="diag-tab" role="tab" aria-selected="true" data-diag="tree">TREE</button>
@@ -670,7 +670,7 @@ function renderHtml(plan: PlanData): string {
     </div>
   </div>
 
-  <footer>Self-contained pruning plan · built by @surgical-pruning/planner</footer>
+  <footer role="contentinfo">Self-contained pruning plan · built by @surgical-pruning/planner</footer>
 </div>
 
 <div class="modal" id="modal" role="dialog" aria-modal="true">
