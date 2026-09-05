@@ -19,7 +19,7 @@ to correctness/safety/maintainability.
 
 ## Current → Target Data Flow
 
-```
+```text
 BEFORE (broken):
   scanDirectory ──▶ analyzeFile ──▶ analyzeDependencies (imported_by=[])
                                     │
@@ -36,7 +36,7 @@ AFTER (real):
 
 ## Executor Safety (target)
 
-```
+```text
 BEFORE:  load manifest → record git_commit_match (decorative) → DELETE regardless
 AFTER:   load manifest → verify sha256 + git_commit == HEAD
          ├─ mismatch ──▶ ABORT, write report{passed:false}, 0 deletions

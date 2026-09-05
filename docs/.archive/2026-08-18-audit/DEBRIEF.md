@@ -80,7 +80,7 @@ is reachable today.
 
 ## 8. Validation (VERIFY — evidence)
 
-```
+```text
 == TYPECHECK == TC=0   (19 tasks, 19 successful)
 == TEST ==      TEST=0 (10/10 packages, all pass)
 == LINT ==      LINT=0 (warnings only, 0 errors)
