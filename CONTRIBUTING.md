@@ -83,7 +83,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 **Examples:**
 
-```
+```text
 feat(planner): add circle-pack diagram mode with D3.js
 fix(reviewer): handle symlinks in dependency graph
 docs: translate README to Spanish

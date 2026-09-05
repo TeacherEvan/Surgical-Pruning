@@ -23,7 +23,7 @@ To change these, edit `CONFIDENCE_THRESHOLDS` in core and re-run the gate.
 `PROTECTED_PATHS` (also in core) lists globs the executor will **never**
 delete — secrets, lockfiles, VCS metadata, dependency trees, build output:
 
-```
+```text
 .git/ .github/ .gitlab/ .husky/
 package-lock.json yarn.lock pnpm-lock.yaml Cargo.lock
 .env *.pem *.key *.cert secrets/ .aws/ .ssh/

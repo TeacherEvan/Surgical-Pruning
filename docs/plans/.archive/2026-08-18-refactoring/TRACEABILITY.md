@@ -23,7 +23,7 @@ the test that proves it, and the empirical evidence (real gate run).
 
 ## Gate Evidence (this run)
 
-```
+```text
 pnpm -r typecheck  → TC OK
 pnpm -r test       → TEST OK   (21 tests across 11 packages, incl. integration)
 pnpm -r lint       → LINT OK
