@@ -15,29 +15,36 @@
 ## Milestone Timeline (sliced, each reviewable)
 
 ### Milestone 1 — Zoom mechanism (Day 1 · Mon)
+
 Interactive zoom wrapper on `.diagram-svg`: mousewheel scale, pan-drag, reset-zoom button. No external lib.
+
 - `packages/planner/src/index.ts`: wrap each SVG output (`renderRadialTree`, `renderFlowchart`, `renderCirclePack`) inside a `.zoom-wrap` container with `transform: scale()` applied; inject zoom event handlers.
 - `tests/graph-zoom.test.ts`: REAL failing assertions (not stubs) — check `.zoom-wrap` present, `transform` style applied, reset button exists.
 
 ### Milestone 2 — Scale control UI (Day 1 · Mon PM)
+
 Visible zoom-in / zoom-out / reset buttons tied to the SVG view; `data-zoom` attrs; `.zoom-ctrl` class.
+
 - Template: add `.zoom-ctrl` button group in `renderHtml()` (after diagram-tabs).
 - CSS: `.zoom-wrap { overflow: hidden; position: relative; }` + `.zoom-wrap.zoomed { cursor: grab; }`
 
 ### Milestone 3 — Red highlight of affected/dead-code areas (Day 2 · Tue)
+
 Highlight affected (selected/delete) diagram nodes and row badges in red; confirm `.node.selected` uses `var(--accent-decay)` (red) with stronger stroke/drop-shadow (already present at line 577 — verify/enhance).
+
 - `packages/planner/src/index.ts`: in SVG renderers ensure `node.row?.action === "delete"` nodes use red fill/stroke (line 303, 390, 452 already partially do); extend text label to show red badge.
 - HTML rows: `.badge-high` (line 601 — already red) applied to high-confidence delete rows; verify it renders.
 - `tests/bug2-dead-code-highlight.test.ts`: real assertions (not orphan) that `.badge-high` and `.node.selected` exist and contain red color reference.
 
 ### Milestone 4 — Integration gate (Day 3 · Wed)
+
 Full planner test passes; lint/typecheck/build green; `.gitignore` exclusions verified; no `git add -A`.
 
 ---
 
 ## Data Flow: Zoom interaction (client-only, no server)
 
-```
+```text
 Mouse event (wheel / drag)  ->  .zoom-wrap container
                                     |
                                     v
@@ -58,11 +65,13 @@ No server mutation. The zoom is pure view-state (like the existing theme toggle 
 ## Mockups (layout reference — not pixel-final)
 
 A. Zoom control bar (under diagram-tabs):
-```
+
+```text
 [+  −  ⟲  reset] — float over SVG bottom-right; small pill buttons; aria-label="Zoom in / out / reset"
 ```
 
 B. Affected-area highlight:
+
 - Diagram node: `.node.selected` = red (`var(--accent-decay)`, stroke-width 2.5, drop-shadow, pulse animation) — ALREADY at line 577; enhance text label to also show red outline.
 - Row: `.badge-high` (line 601) = red background + red border — confirm applied to `auto-prune` candidates.
 
@@ -81,6 +90,7 @@ B. Affected-area highlight:
 ## Verify Visual / Transform Claims Against Live Source (MANDATORY — per skill §Visual-claims)
 
 Before finalizing zoom/scale CSS, verify against `packages/planner/src/index.ts`:
+
 - `.diagram-svg` (line 575): `overflow:visible; width:100%; height:auto` — zoom wrapper must NOT override `overflow:visible` with `hidden` (else nodes clipped). Use `overflow: hidden` ONLY on `.zoom-wrap`, keep `.diagram-svg` `overflow:visible`.
 - `.node.selected` (line 577): `transform` only via `animation: pulse` (opacity only, not rotation/scale); safe. Confirm no parent `transform: none !important` cancels it (none in file).
 - `viewBox` present at line 285 (`viewBox="0 0 900 620"`) — scale mechanism must respect `viewBox` (use CSS `transform` on wrapper, NOT changing SVG `width/height`).
@@ -109,6 +119,7 @@ Before finalizing zoom/scale CSS, verify against `packages/planner/src/index.ts`
 ## Detect Live Sidecar + Output-Directory Ownership (MANDATORY)
 
 Before any executor writes to `packages/planner/src/`:
+
 - `ps -ef | grep -E "convex|next dev|codegen|tsc --watch" | grep -v grep` — check for live regens (none expected in planner package; planner has no `convex/_generated/`).
 - Planner output: `packages/planner/src/index.ts` → writes to `cwd/` + `.prune/`. `.prune/` is NOT owned by a live process (verified: no `convex dev` in planner scope). Safe.
 - Probe step (add to plan): after any write, `ls -la <new-file>` within 60s — if gone, it's sidecar ownership; reroute.
@@ -118,6 +129,7 @@ Before any executor writes to `packages/planner/src/`:
 ## Bite-Sized Task Granularity (per skill §Granularity)
 
 Each milestone = test-first steps (2-5 min each):
+
 1. Read `packages/planner/src/index.ts:575-580` → confirm `.zoom-wrap` class absent.
 2. Add `.zoom-wrap` container + `.zoom-ctrl` buttons to `renderHtml()` → run `pnpm run build` at planner package.
 3. Write REAL failing test in `tests/graph-zoom.test.ts` → `pnpm test -- --testNamePattern=zoom` must FAIL.

@@ -9,7 +9,7 @@
 
 Surgical Pruning is a **multi-agent workflow specification** for identifying, validating, and removing dead code, unused dependencies, and architectural bloat from software projects. It replaces ad-hoc cleanup with a structured pipeline:
 
-```
+```text
 ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
 │  REVIEWER    │──▶│  RESEARCHER  │──▶│  PLANNER     │──▶│  EXECUTORS   │
 │  (Cartographer)│  │ (Investigator)│  │ (HTML Interface)│  │ (Guardians)  │
@@ -114,7 +114,7 @@ The generated planning interface includes:
 
 ## 📁 Repository Structure
 
-```
+```text
 Surgical-Pruning/
 ├── docs/
 │   └── SurgicalpruningConcept.txt    # Complete multi-agent specification

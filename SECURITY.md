@@ -17,7 +17,7 @@ If you discover a security vulnerability in a **reference implementation** of Su
 
 ### 📧 Private Disclosure
 
-Email: **security@teacherevan.dev**
+Email: **<security@teacherevan.dev>**
 
 Include:
 
@@ -102,4 +102,4 @@ For security questions not related to vulnerability disclosure:
 
 ---
 
-_Last updated: 2026-08-16_
+**Last updated:** 2026-08-16
