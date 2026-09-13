@@ -487,8 +487,9 @@ function renderBlob(plan: PlanData): string {
 // HTML RENDERING
 // ---------------------------------------------------------------------------
 
-function renderHtml(plan: PlanData): string {
+function renderHtml(plan: PlanData, treeDiagram: string): string {
   const planJson = JSON.stringify(plan).replace(/</g, "\\u003c");
+  const safeTree = escapeHtml(treeDiagram || "");
 
   const chips = ["All", "Auto-prune", "Review", "Manual", "Protected"]
     .map((g) => {
@@ -668,6 +669,11 @@ function renderHtml(plan: PlanData): string {
     <div class="viewport" id="viewport">
       <div class="spacer-inner" id="spacer"></div>
     </div>
+  </div>
+
+  <div class="panel">
+    <div class="list-head" role="listbox" aria-label="Dependency tree diagram">Dependency tree</div>
+    <div class="viewport" style="height:auto;max-height:360px;overflow:auto;background:var(--bg-deep);border-radius:10px;border:1px solid var(--border-subtle);padding:12px;font-family:monospace;font-size:12px;line-height:1.5;white-space:pre">${safeTree || '(no tree diagram available)'}</div>
   </div>
 
   <footer role="contentinfo">Self-contained pruning plan · built by @surgical-pruning/planner</footer>
@@ -873,6 +879,27 @@ function renderHtml(plan: PlanData): string {
   zoomWrap.addEventListener("wheel", function(e){ if(e.ctrlKey||e.metaKey){ e.preventDefault(); scale = Math.min(3, Math.max(0.4, scale + (e.deltaY>0 ? -0.1 : 0.1))); applyScale(); }}, {passive:false});
 
   renderList();
+
+  // Keyboard navigation: Space/Enter toggles focused checkbox, Left/Right moves focus, / opens filter.
+  document.addEventListener("keydown", function (e) {
+    var target = document.activeElement;
+    if (target && (target.tagName === "INPUT" || target.tagName === "BUTTON" || target.getAttribute("role") === "tab")) return;
+    var cbs = Array.prototype.slice.call(spacer.querySelectorAll("input[type=checkbox]:not(:disabled)"));
+    if (cbs.length === 0) return;
+    var idx = cbs.indexOf(document.activeElement);
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      var cb = (idx >= 0 ? cbs[idx] : cbs[0]);
+      cb.checked = !cb.checked;
+      cb.dispatchEvent(new Event("change", { bubbles: true }));
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      var ni = idx + (e.key === "ArrowDown" ? 1 : -1);
+      if (ni < 0) ni = cbs.length - 1;
+      if (ni >= cbs.length) ni = 0;
+      cbs[ni].focus();
+    }
+  });
 })();
 </script>
 </body>
@@ -938,7 +965,8 @@ export async function runPlanner(options: PlannerOptions): Promise<string> {
 
   const fileName = `surgical-pruning-${mmdd}-${targetName}.html`;
   const absPath = path.resolve(cwd, fileName);
-  const html = renderHtml(plan);
+  const treeDiagram = String(reviewerHandoff?.tree_diagram ?? "");
+  const html = renderHtml(plan, treeDiagram);
 
   await mkdir(cwd, { recursive: true });
   await writeFile(absPath, html, "utf8");

@@ -157,6 +157,13 @@ export async function runExecutor(
     filesProcessed++;
     const abs = resolve(absTarget, relPath);
 
+    // D3: a concurrent verifier may have written .prune/ABORT — stop and roll back.
+    if (existsSync(join(pruneDir, "ABORT"))) {
+      aborted = true;
+      skippedReasons.push("ABORT: concurrent verifier signalled via .prune/ABORT");
+      break;
+    }
+
     if (item?.action !== "delete") {
       filesSkipped++;
       fileResults.push({
@@ -291,6 +298,13 @@ export async function runExecutor(
 
   // On abort (a delete failed mid-run), restore everything via the rollback
   // script and do NOT run the build/commit verification.
+  // D3: signal concurrent watchers via .prune/ABORT so a live verifier can
+  // trigger rollback without waiting for the executor to finish.
+  if (aborted) {
+    try {
+      await writeFile(join(pruneDir, "ABORT"), new Date().toISOString(), "utf8");
+    } catch { /* best effort */ }
+  }
   if (aborted && !dryRun) {
     try {
       execFileSync("bash", [rollbackPath], { cwd: absTarget });

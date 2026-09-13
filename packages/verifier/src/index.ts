@@ -9,6 +9,7 @@
 import { PROTECTED_PATHS } from "@surgical-pruning/core";
 import type { ExecutionReport } from "@surgical-pruning/core";
 import { readFile, stat, mkdir, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -145,6 +146,78 @@ async function detectBuildCommand(
     /* no package.json or no scripts.build */
   }
   return null;
+}
+
+/**
+ * D3 — Concurrent watcher: tail the executor's execution log while it runs and
+ * write .prune/ABORT on any guardrail violation so the executor can roll back
+ * immediately instead of finishing first. Returns a stop() function.
+ *
+ * The watcher polls the log file at `intervalMs`; it stops after `timeoutMs`
+ * or when the log is finalised (aborted/finished flag), whichever comes first.
+ */
+export async function watchExecution(options: {
+  executionLogPath: string;
+  pruneDir: string;
+  intervalMs?: number;
+  timeoutMs?: number;
+  onAbort?: (reason: string) => void;
+}): Promise<() => void> {
+  const { executionLogPath, pruneDir } = options;
+  const intervalMs = options.intervalMs ?? 500;
+  const timeoutMs = options.timeoutMs ?? 300000;
+  const onAbort = options.onAbort ?? (() => {});
+  const abortPath = join(pruneDir, "ABORT");
+
+  let stopped = false;
+  const start = Date.now();
+
+  const tick = async (): Promise<boolean> => {
+    if (stopped) return false;
+    if (Date.now() - start > timeoutMs) return false;
+
+    // If the executor already wrote ABORT, mirror it and stop.
+    if (existsSync(abortPath)) {
+      onAbort("executor signalled ABORT");
+      return false;
+    }
+
+    let raw: string;
+    try {
+      raw = await readFile(executionLogPath, "utf8");
+    } catch {
+      return true; // log not yet written — keep polling
+    }
+
+    let json: any = null;
+    try {
+      json = JSON.parse(raw);
+    } catch {
+      /* partial log — keep polling */
+    }
+
+    // Executor finished (report written) — stop.
+    if (json && typeof json.files_processed === "number") return false;
+
+    // No violation signal yet — keep polling.
+    return true;
+  };
+
+  const loop = async (): Promise<void> => {
+    let keep = true;
+    while (keep) {
+      keep = await tick();
+      if (keep) {
+        await new Promise((r) => setTimeout(r, intervalMs));
+      }
+    }
+  };
+  // Fire-and-forget; caller holds the returned stop() to abort early.
+  loop();
+
+  return () => {
+    stopped = true;
+  };
 }
 
 export async function runVerifier(
