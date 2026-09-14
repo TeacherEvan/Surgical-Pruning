@@ -102,11 +102,38 @@ export async function runExecutor(
     .update(deletePlan.map((i) => String(i.path)).sort().join("\n"))
     .digest("hex");
 
+  // --- manifest checksum verification (D2 tamper gate) ---
+  // Compare the SHA256 of the manifest file we just read against the
+  // checksum the planner recorded. A mismatch means the manifest was
+  // edited after planning — refuse to execute on a tampered plan.
+  // Backward-compatible: a manifest without a declared checksum is treated as
+  // valid (pre-D2 manifests). A declared checksum that mismatches the computed
+  // value is a tamper signal and fails the gate.
+  const declaredManifestSha = String(manifest?.manifest_sha256 ?? "");
+  const manifestChecksumOk =
+    declaredManifestSha.length === 0 || declaredManifestSha === manifestSha;
+  const declaredDeleteSetSha = String(manifest?.delete_set_sha256 ?? "");
+  const deleteSetChecksumOk =
+    declaredDeleteSetSha.length === 0 || declaredDeleteSetSha === deleteSetSha;
+
   // --- git commit match check ---
   const headShort = gitShortHead(absTarget);
   const commitMatch = manifest?.git_commit === headShort;
   const checks: { name: string; passed: boolean; details?: string }[] = [
-    { name: "manifest_checksum", passed: true },
+    {
+      name: "manifest_checksum",
+      passed: manifestChecksumOk,
+      details: manifestChecksumOk
+        ? "manifest sha256 matches planner record"
+        : `manifest sha256 mismatch (computed ${manifestSha}, declared ${declaredManifestSha || "missing"})`,
+    },
+    {
+      name: "delete_set_checksum",
+      passed: deleteSetChecksumOk,
+      details: deleteSetChecksumOk
+        ? "delete set sha256 matches planner record"
+        : `delete set sha256 mismatch (computed ${deleteSetSha}, declared ${declaredDeleteSetSha || "missing"})`,
+    },
     { name: "git_commit_match", passed: commitMatch },
   ];
 

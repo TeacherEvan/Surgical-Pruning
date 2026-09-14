@@ -207,4 +207,68 @@ describe("runExecutor (Agent 4A)", () => {
     // file untouched
     await expect(stat(join(tmp, "dead.ts"))).resolves.toBeDefined();
   });
+
+  it("D2: manifest_checksum fails when declared sha256 mismatches computed (tamper gate)", async () => {
+    await writeFile(join(tmp, "dead.ts"), "export const x = 1;", "utf-8");
+    execSync("git add -A && git commit -qm init", { cwd: tmp });
+    const manifest = {
+      timestamp: new Date().toISOString(),
+      target_path: tmp,
+      git_commit: execSync("git rev-parse --short HEAD", { cwd: tmp })
+        .toString()
+        .trim(),
+      manifest_sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+      selected_files: [
+        { path: "dead.ts", action: "delete", confidence: 0.99, reason: "unused" },
+      ],
+      protected_skipped: [],
+      estimated_reclamation: { bytes: 0, files: 0, ci_seconds: 0 },
+      safety: { dry_run: true, stash_created: false, rollback_script: "" },
+    };
+    const manifestPath = join(tmp, "prune-manifest.json");
+    await writeFile(manifestPath, JSON.stringify(manifest), "utf-8");
+
+    const report = await runExecutor({ manifestPath, cwd: tmp });
+    const checksumCheck = report.verification.checks.find(
+      (c) => c.name === "manifest_checksum",
+    );
+    expect(checksumCheck).toBeDefined();
+    expect(checksumCheck!.passed).toBe(false);
+    expect(checksumCheck!.details).toMatch(/mismatch/);
+    // dry-run: no deletion despite tampered manifest
+    expect(report.files_deleted).toBe(0);
+  });
+
+  it("D2: manifest_checksum passes when no sha256 declared (backward compatible)", async () => {
+    await writeFile(join(tmp, "dead.ts"), "export const x = 1;", "utf-8");
+    execSync("git add -A && git commit -qm init", { cwd: tmp });
+    const manifest = {
+      timestamp: new Date().toISOString(),
+      target_path: tmp,
+      git_commit: execSync("git rev-parse --short HEAD", { cwd: tmp })
+        .toString()
+        .trim(),
+      selected_files: [
+        { path: "dead.ts", action: "delete", confidence: 0.99, reason: "unused" },
+      ],
+      protected_skipped: [],
+      estimated_reclamation: { bytes: 0, files: 0, ci_seconds: 0 },
+      safety: { dry_run: true, stash_created: false, rollback_script: "" },
+    };
+    const manifestPath = join(tmp, "prune-manifest.json");
+    await writeFile(manifestPath, JSON.stringify(manifest), "utf-8");
+
+    const report = await runExecutor({ manifestPath, cwd: tmp });
+    const checksumCheck = report.verification.checks.find(
+      (c) => c.name === "manifest_checksum",
+    );
+    expect(checksumCheck).toBeDefined();
+    expect(checksumCheck!.passed).toBe(true);
+    // delete_set_checksum also passes (no declared value)
+    const dsCheck = report.verification.checks.find(
+      (c) => c.name === "delete_set_checksum",
+    );
+    expect(dsCheck).toBeDefined();
+    expect(dsCheck!.passed).toBe(true);
+  });
 });
