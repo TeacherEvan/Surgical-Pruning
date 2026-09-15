@@ -39,15 +39,16 @@ No N+1, no unbounded loops, no new coupling. Module boundaries intact; no circul
 
 ## New Orchestration Jobs (OBJ-REM-001 ...)
 
-These are the findings fed back into `surgical-orchestration` as JobCards. **Not executed in this run** — the repo is verified-complete and all gates green; this is the remediation backlog.
+These are the findings fed back into `surgical-orchestration` as JobCards. **Executed 2026-09-15 (surgical-implementation run, commit 4c1cfa8).**
+OBJ-REM-001..005 done; OBJ-REM-006 (turbo upgrade, MEDIUM) and OBJ-REM-007 (knip ignore re-eval) deferred pending user sign-off. — the repo is verified-complete and all gates green; this is the remediation backlog.
 
 | ID | Objective | Scope | Risk | Acceptance |
 |----|-----------|-------|------|------------|
-| OBJ-REM-001 | Remove unused `execa` dep from auditor, cli, executor, integration | 4 `package.json` | LOW | `pnpm install` clean; knip `Unused dependencies` no longer lists execa for those packages |
-| OBJ-REM-002 | Remove unused `fast-glob` dep from auditor | `packages/auditor/package.json` | LOW | knip clean for fast-glob |
-| OBJ-REM-003 | Remove unused `@surgical-pruning/core` dep from debriefer, integration | 2 `package.json` | LOW | knip clean |
-| OBJ-REM-004 | Remove unused `depcheck` devDep from reviewer | `packages/reviewer/package.json` | LOW | knip clean |
-| OBJ-REM-005 | Move `zod` from devDependencies → dependencies in reviewer | `packages/reviewer/package.json` | LOW | knip no longer flags zod; build still green |
+| OBJ-REM-001 ✅ | Remove unused `execa` dep from auditor, cli, executor, integration | 4 `package.json` | LOW | `pnpm install` clean; knip `Unused dependencies` no longer lists execa for those packages |
+| OBJ-REM-002 ✅ | Remove unused `fast-glob` dep from auditor | `packages/auditor/package.json` | LOW | knip clean for fast-glob |
+| OBJ-REM-003 ✅ | Remove unused `@surgical-pruning/core` dep from debriefer, integration | 2 `package.json` | LOW | knip clean |
+| OBJ-REM-004 ✅ | Remove unused `depcheck` devDep from reviewer | `packages/reviewer/package.json` | LOW | knip clean |
+| OBJ-REM-005 ✅ | Move `zod` from devDependencies → dependencies in reviewer | `packages/reviewer/package.json` | LOW | knip no longer flags zod; build still green |
 | OBJ-REM-006 | Upgrade `turbo` 1.13.4 → latest (>=2.9.14) to close audit vulns | root `package.json` + lockfile | MEDIUM | Changelog reviewed; `pnpm run lint && typecheck && test && build` green before/after; lockfile diff reviewed |
 | OBJ-REM-007 | Re-evaluate knip `ignore` list (docs/**, .prune/**) — remove if no longer needed | `knip.config.ts` | LOW | knip exit 0 without those ignores, or documented rationale retained |
 
