@@ -11,7 +11,7 @@
 import { writeFile, mkdir } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
-import { CONFIDENCE_THRESHOLDS, PROTECTED_PATHS } from "@surgical-pruning/core";
+import { CONFIDENCE_THRESHOLDS, isProtectedPath } from "@surgical-pruning/core";
 import type {
   HandoffReviewer,
   HandoffResearcher,
@@ -59,35 +59,6 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-function escapeRe(s: string): string {
-  return s.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function isProtectedPath(filePath: string): boolean {
-  const normalized = filePath.replace(/\\/g, "/");
-  const base = normalized.split("/").pop() ?? normalized;
-  return PROTECTED_PATHS.some((pattern) => {
-    if (pattern.endsWith("/")) {
-      return (
-        normalized === pattern ||
-        normalized.startsWith(pattern) ||
-        normalized.includes("/" + pattern)
-      );
-    }
-    if (pattern.includes("*")) {
-      const re = new RegExp(
-        "^" + pattern.split("*").map(escapeRe).join(".*") + "$",
-      );
-      return re.test(normalized) || re.test(base);
-    }
-    return (
-      normalized === pattern ||
-      base === pattern ||
-      normalized.endsWith("/" + pattern)
-    );
-  });
 }
 
 function buildSignal(item: FileInventoryItem): string {

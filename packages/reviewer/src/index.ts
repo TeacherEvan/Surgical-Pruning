@@ -17,7 +17,7 @@ import {
 import { writeFile, mkdir } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { z } from "zod";
 
@@ -32,6 +32,37 @@ export interface ReviewerOptions {
   targetPath: string;
   userPrompt: string;
   cwd?: string;
+}
+
+/**
+ * A monorepo is a repo that actually declares multiple workspaces — not merely
+ * one that has a package manager installed (every npm project has one).
+ */
+export function detectMonorepo(root: string): boolean {
+  if (existsSync(join(root, "pnpm-workspace.yaml"))) return true;
+  if (existsSync(join(root, "lerna.json"))) return true;
+
+  const pkgPath = join(root, "package.json");
+  if (existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
+      if (pkg.workspaces) return true;
+    } catch {
+      // ignore unreadable/malformed package.json
+    }
+  }
+
+  const turboPath = join(root, "turbo.json");
+  if (existsSync(turboPath)) {
+    try {
+      const turbo = JSON.parse(readFileSync(turboPath, "utf-8"));
+      if (turbo.workspaces) return true;
+    } catch {
+      // ignore unreadable/malformed turbo.json
+    }
+  }
+
+  return false;
 }
 
 export async function runReviewer(
@@ -61,7 +92,6 @@ export async function runReviewer(
     cwd: sink,
     targetPath,
     walkSkip: SCAN_WALK_SKIP,
-    protectedPatterns: PROTECTED_PATHS,
   });
 
   console.log(
@@ -78,10 +108,7 @@ export async function runReviewer(
   const languagesDetected = [...new Set(files.map((f) => f.language))];
   const frameworksDetected = detectFrameworks(files);
   const packageManagers = detectPackageManagers(sink);
-  const monorepo =
-    packageManagers.includes("pnpm") ||
-    packageManagers.includes("yarn") ||
-    packageManagers.includes("npm");
+  const monorepo = detectMonorepo(sink);
 
   const constraints: ConstraintsType = {
     exclusion_patterns_applied: [...PROTECTED_PATHS],

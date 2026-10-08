@@ -9,8 +9,45 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
-import { runReviewer } from "../src/index.js";
+import { runReviewer, detectMonorepo } from "../src/index.js";
 import { HandoffReviewer } from "@surgical-pruning/core";
+
+describe("reviewer/detectMonorepo", () => {
+  it("is false for a plain npm repo (must not trigger on any package manager)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "sp-mono-"));
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "x" }));
+    writeFileSync(join(dir, "index.js"), "module.exports = 1;\n");
+    expect(detectMonorepo(dir)).toBe(false);
+    rmSync(dir, { recursive: true, force: true } as any);
+  });
+
+  it("is true for a pnpm workspace", () => {
+    const dir = mkdtempSync(join(tmpdir(), "sp-mono-"));
+    writeFileSync(
+      join(dir, "pnpm-workspace.yaml"),
+      "packages:\n  - 'packages/*'\n",
+    );
+    expect(detectMonorepo(dir)).toBe(true);
+    rmSync(dir, { recursive: true, force: true } as any);
+  });
+
+  it("is true for an npm/yarn workspaces package.json", () => {
+    const dir = mkdtempSync(join(tmpdir(), "sp-mono-"));
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({ name: "x", workspaces: ["packages/*"] }),
+    );
+    expect(detectMonorepo(dir)).toBe(true);
+    rmSync(dir, { recursive: true, force: true } as any);
+  });
+
+  it("is true for a lerna monorepo", () => {
+    const dir = mkdtempSync(join(tmpdir(), "sp-mono-"));
+    writeFileSync(join(dir, "lerna.json"), JSON.stringify({ version: "0.0.0" }));
+    expect(detectMonorepo(dir)).toBe(true);
+    rmSync(dir, { recursive: true, force: true } as any);
+  });
+});
 
 describe("reviewer/runReviewer", () => {
   const dir = mkdtempSync(join(tmpdir(), "sp-rev-"));

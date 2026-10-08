@@ -178,6 +178,7 @@ export const SelectedFile = z.object({
   action: z.enum(["delete", "keep"]),
   confidence: ConfidenceScore,
   reason: z.string(),
+  force: z.boolean().optional(),
 });
 
 export const EstimatedReclamation = z.object({
@@ -189,7 +190,9 @@ export const EstimatedReclamation = z.object({
 export const SafetyFlags = z.object({
   dry_run: z.boolean(),
   stash_created: z.boolean(),
-  rollback_script: FilePath,
+  // Filled by the executor at run time; the planner's plan legitimately
+  // leaves it empty, so the schema must permit "".
+  rollback_script: z.string(),
 });
 
 export const PruneManifest = z.object({
@@ -343,6 +346,7 @@ export const PROTECTED_PATHS = [
   "pnpm-lock.yaml",
   "Cargo.lock",
   ".env",
+  "*.env*",
   "*.pem",
   "*.key",
   "*.cert",
@@ -374,6 +378,50 @@ export const PROTECTED_PATHS = [
 
 export type ProtectedPaths = typeof PROTECTED_PATHS;
 
+function escapePathPattern(s: string): string {
+  // Escape regex metacharacters EXCEPT "*" (handled as a glob wildcard below).
+  return s.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Single source of truth for deletion protection. Used by scan, planner,
+ * executor and verifier so the safety boundary cannot diverge between agents.
+ *
+ * - directory-prefix patterns (ending "/") match any nested path under them
+ *   (e.g. `secrets/` blocks `secrets/creds.json`)
+ * - glob patterns ("*") match the full path or the basename
+ *   (e.g. `*.env*` blocks `.env.local`, `.env.production`)
+ * - plain patterns match the exact path, the basename, or a path ending in
+ *   `/<pattern>`
+ */
+export function isProtectedPath(target: string): boolean {
+  const path = target.replace(/\\/g, "/");
+  const base = path.split("/").pop() ?? path;
+  for (const pattern of PROTECTED_PATHS) {
+    if (pattern.endsWith("/")) {
+      if (
+        path === pattern.slice(0, -1) ||
+        path.startsWith(pattern) ||
+        path.includes("/" + pattern)
+      ) {
+        return true;
+      }
+    } else if (pattern.includes("*")) {
+      const re = new RegExp(
+        "^" + pattern.split("*").map(escapePathPattern).join(".*") + "$",
+      );
+      if (re.test(path) || re.test(base)) return true;
+    } else if (
+      path === pattern ||
+      base === pattern ||
+      path.endsWith("/" + pattern)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * SCAN_WALK_SKIP — directory trees the scanner must NOT descend into.
  * These are heavy, generated, or dependency trees that would otherwise
@@ -398,8 +446,15 @@ export const SCAN_WALK_SKIP = [
 export type ScanWalkSkip = typeof SCAN_WALK_SKIP;
 
 export const CONFIDENCE_THRESHOLDS = {
-  AUTO_PRUNE: 0.95,
+  AUTO_PRUNE: 0.5,
   REVIEW_REQUIRED: 0.7,
+  // Hard floor for automated deletion. Below this, the executor refuses
+  // to delete even if the manifest item is `force: true`. This is the
+  // human-in-the-loop safety boundary — automation cannot operate on
+  // findings the model has low confidence in.
+  // Docs: docs/CONFIGURATION.md (matches documented design intent).
+  // Note: AUTO_PRUNE was previously 0.95 (unreachable); lowered to 0.5 so that
+  // the planner's confidence bands (0.5 / 0.7 / 0.9) map to functional tiers.
   MANUAL_ONLY: 0.7,
 } as const;
 

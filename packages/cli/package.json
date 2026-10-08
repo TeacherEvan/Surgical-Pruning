@@ -30,8 +30,7 @@
     "@surgical-pruning/verifier": "workspace:*",
     "@surgical-pruning/debriefer": "workspace:*",
     "@surgical-pruning/auditor": "workspace:*",
-    "@surgical-pruning/researcher-v2": "workspace:*",
-    "execa": "^8.0.1"
+    "@surgical-pruning/researcher-v2": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
