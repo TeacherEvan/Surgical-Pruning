@@ -4,15 +4,13 @@ import fg from "fast-glob";
 const { glob } = fg;
 import type { FileInventoryItem, FolderSummary } from "./schemas.js";
 import { getFileGitHistory } from "./git.js";
-import { PROTECTED_PATHS, SCAN_WALK_SKIP } from "./schemas.js";
+import { SCAN_WALK_SKIP, isProtectedPath } from "./schemas.js";
 
 export interface ScanOptions {
   cwd: string;
   targetPath: string;
   /** Directory trees to skip walking into (heavy/generated deps). */
   walkSkip?: readonly string[];
-  /** Deletion-guard path patterns; matched files are still scanned & tagged. */
-  protectedPatterns?: readonly string[];
 }
 
 export interface DependencyGraphPartial {
@@ -32,7 +30,6 @@ export async function scanDirectory(options: ScanOptions): Promise<{
     cwd,
     targetPath,
     walkSkip = SCAN_WALK_SKIP,
-    protectedPatterns = PROTECTED_PATHS,
   } = options;
   const absTarget = resolve(cwd, targetPath);
 
@@ -63,7 +60,7 @@ export async function scanDirectory(options: ScanOptions): Promise<{
   for (const file of allFiles) {
     try {
       const item = await analyzeFile(file, cwd, absTarget);
-      if (isProtectedFile(item.path, [...protectedPatterns])) {
+      if (isProtectedFile(item.path)) {
         item.is_protected = true;
       }
       files.push(item);
@@ -455,25 +452,6 @@ export async function detectDeadCodeSignals(
   };
 }
 
-export function isProtectedFile(
-  filePath: string,
-  exclusionPatterns: string[],
-): boolean {
-  const name = basename(filePath);
-  const relPath = filePath;
-
-  for (const pattern of exclusionPatterns) {
-    if (matchPattern(relPath, pattern) || matchPattern(name, pattern)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function matchPattern(path: string, pattern: string): boolean {
-  const regexPattern = pattern
-    .replace(/\./g, "\\.")
-    .replace(/\*/g, ".*")
-    .replace(/\?/g, ".");
-  return new RegExp(`^${regexPattern}$`).test(path);
+export function isProtectedFile(filePath: string): boolean {
+  return isProtectedPath(filePath);
 }

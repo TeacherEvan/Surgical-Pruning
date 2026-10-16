@@ -123,10 +123,10 @@ export async function runCLI(options: CLIOptions): Promise<void> {
     reviewerHandoff,
     researcherHandoff,
     cwd: sink,
-    // The persisted PRUNE_MANIFEST.json mirrors the browser plan. Without an
-    // explicit --execute, it is written as a dry-run plan (no deletions). The
-    // verifier's git-commit check still gates real changes.
-    dryRun: !execute,
+    // Without --execute the plan is dry-run by default. --dry-run additionally
+    // forces a no-deletion pass: even with --execute the executor will simulate
+    // (safety.dry_run=true) rather than write deletions.
+    dryRun: dryRun || !execute,
   });
 
   console.log(`Planner output: ${plannerOutput}`);
@@ -283,7 +283,8 @@ Usage: surgical-prune <target-path> [options]
 
 Options:
   -p, --prompt <text>     User prompt describing pruning intent
-  --dry-run               Alias for default behavior: plan only, no deletions
+  --dry-run               Force a no-deletion pass: plans, and (with --execute)
+                           simulates deletions without writing them
   --execute               Run Agents 4A/4B (guardian-executor + verifier) on
                           the persisted PRUNE_MANIFEST.json. OFF by default.
   -h, --help              Show this help

@@ -42,6 +42,10 @@ secrets/
 .aws/
 .ssh/
 
+# Python virtualenv (from skill runs)
+.venv/
+venv/
+
 # Lockfiles (committed in projects, not in spec repo)
 package-lock.json
 yarn.lock
@@ -76,4 +80,9 @@ audit_report.md
 review_findings.md
 fix_summary.md
 investigation_report.md
+
+# Cross-skill plan artifacts
+HERMES_PLAN.html
+HERMES_PLAN.ai.json
 docs/.scratch-audit/
+.prune/

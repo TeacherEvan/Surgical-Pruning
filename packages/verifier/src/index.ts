@@ -6,7 +6,7 @@
 //   - an execution log is present
 // Emits a structured verification report to <cwd>/.prune/verification-report.json.
 
-import { PROTECTED_PATHS } from "@surgical-pruning/core";
+import { isProtectedPath } from "@surgical-pruning/core";
 import type { ExecutionReport } from "@surgical-pruning/core";
 import { readFile, stat, mkdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -34,43 +34,8 @@ export interface VerificationReport {
   timestamp: string;
 }
 
-/** Mutable copy of the frozen core constant. */
-const PROTECTED = [...PROTECTED_PATHS];
-
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/**
- * Test a file path against the PROTECTED_PATHS ruleset.
- * - directory prefixes (ending in "/") match any path under that directory
- * - globs ("*") are matched against the full path and the basename
- * - plain entries match the exact path or the basename
- */
-export function isProtectedPath(p: string): boolean {
-  const path = p.trim();
-  if (path.length === 0) return false;
-  const base = path.split("/").pop() ?? path;
-  for (const pattern of PROTECTED) {
-    if (pattern.endsWith("/")) {
-      if (
-        path === pattern.slice(0, -1) ||
-        path.startsWith(pattern) ||
-        path.includes("/" + pattern)
-      ) {
-        return true;
-      }
-    } else if (pattern.includes("*")) {
-      const re = new RegExp(
-        "^" + pattern.split("*").map(escapeRegExp).join(".*") + "$",
-      );
-      if (re.test(path) || re.test(base)) return true;
-    } else if (path === pattern || base === pattern) {
-      return true;
-    }
-  }
-  return false;
-}
+/** Re-export the canonical guard so verifier's public API is unchanged. */
+export { isProtectedPath } from "@surgical-pruning/core";
 
 /** Parse a manifest JSON file; throw a clear Error when it is missing/invalid. */
 async function loadManifest(manifestPath: string): Promise<any> {
@@ -359,7 +324,7 @@ export async function runVerifier(
     let buildDetails = buildCmd.label;
     try {
       execFileSync(buildCmd.cmd[0]!, buildCmd.cmd.slice(1), {
-        cwd,
+        cwd: opRoot,
         timeout: 60000,
         stdio: ["ignore", "pipe", "ignore"],
       });

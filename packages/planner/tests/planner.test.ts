@@ -218,11 +218,34 @@ describe("runPlanner", () => {
     // Theme toggle + ARIA tab semantics + postMessage PRUNE handoff.
     expect(html).toContain('id="themeBtn"');
     expect(html).toContain('role="tablist"');
-    expect(html).toContain('PRUNE_TRIGGER');
+    expect(html).toContain("PRUNE_TRIGGER");
     expect(html).toContain('localStorage.setItem("sp-theme"');
 
     // Also persisted into .prune/ (spec deviation: plan lives beside artifacts).
     const pruneHtml = join(tmp, ".prune", basename(out));
     expect((await stat(pruneHtml)).isFile()).toBe(true);
+  });
+
+  // Bug 1 TDD: graphs must be zoomable / have scale control (FAILS until fixed)
+  it("renders a zoomable diagram with scale/zoom control", async () => {
+    const reviewerHandoff = makeReviewerHandoff();
+    const researcherHandoff = makeResearcherHandoff();
+    const out = await runPlanner({
+      reviewerHandoff,
+      researcherHandoff,
+      cwd: tmp,
+    });
+    const html = await readFile(out, "utf8");
+    // The planner HTML should include a zoom/scale mechanism for SVG diagrams.
+    // Expected: a zoom wrapper, scale attribute, or interactive zoom control.
+    // Bug 1 TDD: planner HTML must expose an interactive zoom/scale mechanism
+    // specifically on diagram SVGs (not just unrelated CSS animations/meta tags).
+    const hasZoomControl =
+      /\.zoom[-\w]*\{/.test(html) || // .zoom CSS class
+      /data-zoom[=\"]/.test(html) || // data-zoom attrs
+      /id=["\']zoom/.test(html) || // #zoom element
+      /<button[^>]*zoom/i.test(html) || // zoom button
+      (/transform=["\']scale\(/i.test(html) && html.includes("data-diagpane")); // scale in SVG for diagrams
+    expect(hasZoomControl).toBe(true);
   });
 });
