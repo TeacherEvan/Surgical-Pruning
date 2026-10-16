@@ -9,7 +9,7 @@
 
 Surgical Pruning is a **multi-agent workflow specification** for identifying, validating, and removing dead code, unused dependencies, and architectural bloat from software projects. It replaces ad-hoc cleanup with a structured pipeline:
 
-```
+```text
 ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
 │  REVIEWER    │──▶│  RESEARCHER  │──▶│  PLANNER     │──▶│  EXECUTORS   │
 │  (Cartographer)│  │ (Investigator)│  │ (HTML Interface)│  │ (Guardians)  │
@@ -114,20 +114,22 @@ The generated planning interface includes:
 
 ## 📁 Repository Structure
 
-```
+```text
 Surgical-Pruning/
+├── packages/                           # 12 workspace packages (core, reviewer,
+│   │                                   #   researcher, researcher-v2, planner,
+│   │                                   #   executor, verifier, debriefer,
+│   │                                   #   auditor, integration, cli)
 ├── docs/
-│   └── SurgicalpruningConcept.txt    # Complete multi-agent specification
+│   ├── SurgicalpruningConcept.txt      # Original multi-agent specification
+│   ├── AGENT-API.md                    # Per-package agent API surface
+│   ├── CLI-USAGE.md                    # surgical-pruning binary usage
+│   └── CONFIGURATION.md                # Config reference
 ├── .github/
-│   ├── workflows/                    # CI pipelines (to be added)
-│   └── ISSUE_TEMPLATE/               # Issue templates (to be added)
-├── scripts/                          # Helper scripts (to be added)
-├── templates/                        # HTML template for Planner (to be added)
-├── LICENSE                           # MIT License
-├── CONTRIBUTING.md                   # Contribution guidelines
-├── CODE_OF_CONDUCT.md                # Community standards
-├── SECURITY.md                       # Security policy
-└── README.md                         # This file
+│   ├── workflows/                      # ci.yml, release.yml, spec-validation.yml
+│   └── ISSUE_TEMPLATE/                 # Issue templates
+├── LICENSE                             # MIT License
+├── README.md                           # This file
 ```
 
 ---
@@ -179,8 +181,10 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## 📊 Status
 
-> **Specification v2.0** — Complete and ready for implementation.  
-> No reference implementation exists yet; this repo contains the authoritative spec.
+> **Specification v2.0 + reference implementation.** The spec lives in
+> `docs/SurgicalpruningConcept.txt`; the implementation is the 12-package
+> pnpm/turbo workspace under `packages/` (run `pnpm test`).
+> Known gaps vs the spec are tracked in `docs/GAP_PLAN.md`.
 
 ---
 

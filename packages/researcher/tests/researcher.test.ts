@@ -1,6 +1,23 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { runResearcher } from "../src/index.js";
 import type { HandoffReviewer } from "@surgical-pruning/core";
+
+// Hermetic offline mode. runResearcher calls webSearch(query, 3, 8000), and
+// webSearch can spend 8000ms on DuckDuckGo plus a second 8000ms on the Wikipedia
+// fallback — up to 16s, far beyond vitest's 5s default. That made this suite
+// pass only on a fast network. cite() delegates to webSearch internally, so it
+// must be stubbed alongside (an internal call is not routed through the mocked
+// module export).
+vi.mock("@surgical-pruning/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@surgical-pruning/core")>();
+  return {
+    ...actual,
+    webSearch: vi.fn(async () => [
+      { title: "Mock: dead-code removal best practice", url: "https://example.com/practice", snippet: "stubbed" },
+    ]),
+    cite: vi.fn(async (_query: string, fallback: string) => fallback),
+  };
+});
 
 const fakeReviewerHandoff = {
   metadata: {

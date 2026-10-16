@@ -7,6 +7,14 @@
     {
       "pattern": "https?://127\\.0\\.0\\.1.*",
       "reason": "Local development URLs"
+    },
+    {
+      "pattern": "^https://www\\.npmjs\\.com/package/.*$",
+      "reason": "npm registry rate-limits anonymous HEAD probes with 403; links verified manually"
+    },
+    {
+      "pattern": "^https://stackoverflow\\.com/questions/.*$",
+      "reason": "StackOverflow rate-limits anonymous HEAD probes with 403; links verified manually"
     }
   ],
   "replacementPatterns": [

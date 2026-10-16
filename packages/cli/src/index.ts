@@ -4,7 +4,7 @@ import { runReviewer } from "@surgical-pruning/reviewer";
 import { runResearcher } from "@surgical-pruning/researcher";
 import { runPlanner } from "@surgical-pruning/planner";
 import { runExecutor } from "@surgical-pruning/executor";
-import { runVerifier } from "@surgical-pruning/verifier";
+import { runVerifier, watchExecution } from "@surgical-pruning/verifier";
 import { runDebriefer } from "@surgical-pruning/debriefer";
 import { runAuditor } from "@surgical-pruning/auditor";
 import { runResearcherV2 } from "@surgical-pruning/researcher-v2";
@@ -151,6 +151,16 @@ export async function runCLI(options: CLIOptions): Promise<void> {
       "└─────────────────────────────────────────────────────────────────────────────┘",
     );
     const execLogPath = join(sink, ".prune", "execution-report.json");
+    const pruneDir = join(sink, ".prune");
+    // D3: start a concurrent watcher BEFORE the executor runs so it can
+    // signal ABORT mid-flight if a guardrail is violated.
+    const stopWatcher = await watchExecution({
+      executionLogPath: execLogPath,
+      pruneDir,
+      timeoutMs: 600000,
+      onAbort: (reason) => console.log(`[WATCHER] ${reason}`),
+    });
+    try {
     const executionReport = await runExecutor({ manifestPath, cwd: sink });
     console.log(
       `Executor: ${executionReport.files_deleted} deleted, ${executionReport.files_skipped} skipped, ${executionReport.bytes_reclaimed} bytes reclaimed.`,
@@ -163,6 +173,9 @@ export async function runCLI(options: CLIOptions): Promise<void> {
     console.log(
       `Verifier: ${verification.passed ? "PASSED" : "FAILED"} (${verification.violations.length} violations)`,
     );
+    } finally {
+      stopWatcher();
+    }
     console.log("");
   } else {
     if (!existsSync(manifestPath)) {

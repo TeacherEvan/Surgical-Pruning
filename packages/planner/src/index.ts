@@ -458,8 +458,9 @@ function renderBlob(plan: PlanData): string {
 // HTML RENDERING
 // ---------------------------------------------------------------------------
 
-function renderHtml(plan: PlanData): string {
+function renderHtml(plan: PlanData, treeDiagram: string): string {
   const planJson = JSON.stringify(plan).replace(/</g, "\\u003c");
+  const safeTree = escapeHtml(treeDiagram || "");
 
   const chips = ["All", "Auto-prune", "Review", "Manual", "Protected"]
     .map((g) => {
@@ -583,7 +584,7 @@ function renderHtml(plan: PlanData): string {
 </head>
 <body>
 <div class="wrap">
-  <header>
+  <header role="banner">
     <div>
       <h1>SURGICAL PRUNING — ${escapeHtml(plan.target)} — ${escapeHtml(plan.date)}</h1>
       <div class="sub">git: ${escapeHtml(plan.gitCommit)}</div>
@@ -596,16 +597,16 @@ function renderHtml(plan: PlanData): string {
     </div>
   </header>
 
-  <div class="panel">
+  <div class="panel" role="main">
     <div class="toolbar">
-      <div class="chips" role="tablist" aria-label="Filter by group">${chips}</div>
+      <div class="chips" role="tablist" aria-label="Filter by group" role="navigation">${chips}</div>
       <div class="spacer"></div>
       <button class="theme-toggle" id="themeBtn" aria-label="Toggle theme">🌿 Nature</button>
       <button class="action btn-export" id="exportBtn">EXPORT PLAN</button>
       <button class="action btn-dry" id="dryBtn">DRY RUN</button>
       <button class="action btn-prune" id="pruneBtn">PRUNE</button>
     </div>
-    <div class="summary" id="summary"></div>
+    <div class="summary" id="summary" aria-live="polite" aria-atomic="true"></div>
 
     <div class="diagram-tabs" role="tablist" aria-label="Diagram mode">
       <button class="diag-tab" role="tab" aria-selected="true" data-diag="tree">TREE</button>
@@ -641,7 +642,12 @@ function renderHtml(plan: PlanData): string {
     </div>
   </div>
 
-  <footer>Self-contained pruning plan · built by @surgical-pruning/planner</footer>
+  <div class="panel">
+    <div class="list-head" role="listbox" aria-label="Dependency tree diagram">Dependency tree</div>
+    <div class="viewport" style="height:auto;max-height:360px;overflow:auto;background:var(--bg-deep);border-radius:10px;border:1px solid var(--border-subtle);padding:12px;font-family:monospace;font-size:12px;line-height:1.5;white-space:pre">${safeTree || '(no tree diagram available)'}</div>
+  </div>
+
+  <footer role="contentinfo">Self-contained pruning plan · built by @surgical-pruning/planner</footer>
 </div>
 
 <div class="modal" id="modal" role="dialog" aria-modal="true">
@@ -844,6 +850,27 @@ function renderHtml(plan: PlanData): string {
   zoomWrap.addEventListener("wheel", function(e){ if(e.ctrlKey||e.metaKey){ e.preventDefault(); scale = Math.min(3, Math.max(0.4, scale + (e.deltaY>0 ? -0.1 : 0.1))); applyScale(); }}, {passive:false});
 
   renderList();
+
+  // Keyboard navigation: Space/Enter toggles focused checkbox, Left/Right moves focus, / opens filter.
+  document.addEventListener("keydown", function (e) {
+    var target = document.activeElement;
+    if (target && (target.tagName === "INPUT" || target.tagName === "BUTTON" || target.getAttribute("role") === "tab")) return;
+    var cbs = Array.prototype.slice.call(spacer.querySelectorAll("input[type=checkbox]:not(:disabled)"));
+    if (cbs.length === 0) return;
+    var idx = cbs.indexOf(document.activeElement);
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      var cb = (idx >= 0 ? cbs[idx] : cbs[0]);
+      cb.checked = !cb.checked;
+      cb.dispatchEvent(new Event("change", { bubbles: true }));
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      var ni = idx + (e.key === "ArrowDown" ? 1 : -1);
+      if (ni < 0) ni = cbs.length - 1;
+      if (ni >= cbs.length) ni = 0;
+      cbs[ni].focus();
+    }
+  });
 })();
 </script>
 </body>
@@ -909,7 +936,8 @@ export async function runPlanner(options: PlannerOptions): Promise<string> {
 
   const fileName = `surgical-pruning-${mmdd}-${targetName}.html`;
   const absPath = path.resolve(cwd, fileName);
-  const html = renderHtml(plan);
+  const treeDiagram = String(reviewerHandoff?.tree_diagram ?? "");
+  const html = renderHtml(plan, treeDiagram);
 
   await mkdir(cwd, { recursive: true });
   await writeFile(absPath, html, "utf8");

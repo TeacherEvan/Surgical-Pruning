@@ -1,7 +1,7 @@
 # Surgical Pruning — Implementation Plan
 
 **Status:** Specification complete (v2.0); all 7 agents implemented, tested, and CI-gated (npm release pending)  
-**Repository:** https://github.com/TeacherEvan/Surgical-Pruning  
+**Repository:** <https://github.com/TeacherEvan/Surgical-Pruning>  
 **Specification:** `docs/SurgicalpruningConcept.txt`
 
 ---
@@ -31,7 +31,7 @@ Build reference implementations for the 7-agent Surgical Pruning multi-agent orc
 
 ### 1.1 Project Structure
 
-```
+```text
 surgical-pruning/
 ├── packages/
 │   ├── core/                    # Shared types, schemas, utilities
@@ -333,4 +333,4 @@ Every implementation must enforce:
 
 _Plan author: Implementation agent_  
 _Specification: `docs/SurgicalpruningConcept.txt` v2.0_  
-_Repository: https://github.com/TeacherEvan/Surgical-Pruning_
+_Repository: <https://github.com/TeacherEvan/Surgical-Pruning>_

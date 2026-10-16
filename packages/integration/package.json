@@ -9,7 +9,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@surgical-pruning/core": "workspace:*",
     "@surgical-pruning/reviewer": "workspace:*",
     "@surgical-pruning/planner": "workspace:*",
     "@surgical-pruning/executor": "workspace:*"
